@@ -1,68 +1,112 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DataTable, Column } from '../components/ui/DataTable';
 import { Button } from '../components/ui/Button';
 import { StatusBadge } from '../components/ui/StatusBadge';
-import { mockPosts } from '../utils/mockData';
-import { Post } from '../types';
 import { TrendingUp, Pin, MoveUp, MoveDown, X } from 'lucide-react';
+import { apiRequest } from '../utils/apiClient';
 export function TrendingControlPage() {
   const [selectedSection, setSelectedSection] = useState<'unap-blast' | 'manual-pinned' | 'organic'>('unap-blast');
-  const unapBlasts = mockPosts.filter(p => p.isUnapBlast && p.trendingSection === 'unap-blast');
-  const manualPinned = mockPosts.filter(p => p.trendingSection === 'manual-pinned');
-  const organicTrending = mockPosts.filter(p => p.trendingSection === 'organic');
-  const columns: Column<Post>[] = [{
-    key: 'position',
-    header: 'Position',
-    render: post => <div className="flex items-center gap-2">
-          <span className="text-2xl font-bold text-primary">
-            #{post.trendingPosition}
-          </span>
-        </div>
-  }, {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [topUblasts, setTopUblasts] = useState<any[]>([]);
+  const [manualPinned, setManualPinned] = useState<any[]>([]);
+  const [organicTrending, setOrganicTrending] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadTrending();
+  }, []);
+
+  async function loadTrending() {
+    setLoading(true);
+    setError(null);
+    const result = await apiRequest({ path: '/api/admin/trending/overview' });
+    if (!result.ok) {
+      setError(result.data?.error || 'Failed to load trending data.');
+      setLoading(false);
+      return;
+    }
+    setTopUblasts(result.data.top || []);
+    setManualPinned(result.data.manual || []);
+    setOrganicTrending(result.data.organic || []);
+    setLoading(false);
+  }
+
+  async function handlePin(postId: string) {
+    const result = await apiRequest({
+      path: '/api/admin/trending/manual',
+      method: 'POST',
+      body: { postId }
+    });
+    if (result.ok) loadTrending();
+  }
+
+  async function handleUnpin(placementId: string) {
+    const result = await apiRequest({
+      path: `/api/admin/trending/manual/${placementId}`,
+      method: 'DELETE'
+    });
+    if (result.ok) loadTrending();
+  }
+
+  async function handleMove(placementId: string, nextPosition: number) {
+    if (nextPosition < 1 || nextPosition > 16) return;
+    const result = await apiRequest({
+      path: `/api/admin/trending/manual/${placementId}`,
+      method: 'PATCH',
+      body: { position: nextPosition }
+    });
+    if (result.ok) loadTrending();
+  }
+
+  const ublastColumns: Column<any>[] = [{
     key: 'content',
-    header: 'Post',
+    header: 'UBlast Post',
     render: post => <div className="flex items-center gap-3">
-          {post.thumbnail && <img src={post.thumbnail} alt="" className="w-12 h-12 rounded object-cover" />}
+          {post.mediaUrl && <img src={post.mediaUrl} alt="" className="w-12 h-12 rounded object-cover" />}
           <div>
-            <p className="font-medium text-text-primary">{post.user.name}</p>
+            <p className="font-medium text-text-primary">UBlast</p>
             <p className="text-sm text-text-secondary truncate max-w-xs">
-              {post.content}
+              {post.description || 'No description'}
             </p>
           </div>
         </div>
   }, {
-    key: 'stats',
-    header: 'Engagement',
-    render: post => <div className="space-y-1">
-          <div className="text-sm text-text-secondary">
-            <span className="font-medium text-text-primary">
-              {post.stats.views.toLocaleString()}
-            </span>{' '}
-            views
-          </div>
-          <div className="text-sm text-text-secondary">
-            <span className="font-medium text-text-primary">
-              {post.stats.likes.toLocaleString()}
-            </span>{' '}
-            likes
-          </div>
-        </div>
+    key: 'createdAt',
+    header: 'Created',
+    render: post => new Date(post.createdAt).toLocaleString()
   }, {
-    key: 'section',
-    header: 'Section',
-    render: post => {
-      const sectionLabels = {
-        'unap-blast': 'UNAP Blast',
-        'manual-pinned': 'Pinned',
-        organic: 'Organic'
-      };
-      return <StatusBadge status={sectionLabels[post.trendingSection!]} />;
+    key: 'status',
+    header: 'Status',
+    render: () => <StatusBadge status="UNAP Blast" />
+  }];
+
+  const postColumns: Column<any>[] = [{
+    key: 'content',
+    header: 'Post',
+    render: item => {
+      const post = item.post || item;
+      return <div className="flex items-center gap-3">
+          {post.mediaUrl && <img src={post.mediaUrl} alt="" className="w-12 h-12 rounded object-cover" />}
+          <div>
+            <p className="font-medium text-text-primary">Post</p>
+            <p className="text-sm text-text-secondary truncate max-w-xs">
+              {post.description || 'No description'}
+            </p>
+          </div>
+        </div>;
+    }
+  }, {
+    key: 'createdAt',
+    header: 'Created',
+    render: item => {
+      const post = item.post || item;
+      return new Date(post.createdAt).toLocaleString();
     }
   }];
   const getSectionData = () => {
     switch (selectedSection) {
       case 'unap-blast':
-        return unapBlasts;
+        return topUblasts;
       case 'manual-pinned':
         return manualPinned;
       case 'organic':
@@ -114,7 +158,7 @@ export function TrendingControlPage() {
       {/* Section Selector */}
       <div className="flex gap-3 overflow-x-auto pb-2">
         <button onClick={() => setSelectedSection('unap-blast')} className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${selectedSection === 'unap-blast' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'bg-surface border border-slate-700 text-text-secondary hover:text-text-primary hover:border-primary/50'}`}>
-          UNAP Blasts ({unapBlasts.length})
+          UNAP Blasts ({topUblasts.length})
         </button>
         <button onClick={() => setSelectedSection('manual-pinned')} className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${selectedSection === 'manual-pinned' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'bg-surface border border-slate-700 text-text-secondary hover:text-text-primary hover:border-primary/50'}`}>
           Manual Pinned ({manualPinned.length}/5)
@@ -128,29 +172,34 @@ export function TrendingControlPage() {
       {selectedSection === 'manual-pinned' && <div className="bg-surface border border-slate-700 rounded-lg p-4 flex justify-between items-center">
           <p className="text-sm text-text-secondary">
             <strong className="text-text-primary">
-              {manualPinned.length} of 5
+              {manualPinned.length} of 16
             </strong>{' '}
             manual slots used
           </p>
-          <Button icon={Pin}>Pin Post to Trending</Button>
+          <Button icon={Pin} onClick={loadTrending}>Refresh</Button>
         </div>}
 
       {/* Data Table */}
-      <DataTable data={getSectionData()} columns={columns} actions={post => <div className="flex gap-2">
+      {loading && <div className="text-text-secondary">Loading trending data...</div>}
+      {error && <div className="text-red-400 text-sm">{error}</div>}
+      {!loading && <DataTable data={getSectionData()} columns={selectedSection === 'unap-blast' ? ublastColumns : postColumns} actions={item => <div className="flex gap-2">
             {selectedSection === 'manual-pinned' && <>
-                <Button variant="ghost" size="sm" title="Move Up">
+                <Button variant="ghost" size="sm" title="Move Up" onClick={() => handleMove(item.placementId, item.position - 1)}>
                   <MoveUp className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="sm" title="Move Down">
+                <Button variant="ghost" size="sm" title="Move Down" onClick={() => handleMove(item.placementId, item.position + 1)}>
                   <MoveDown className="w-4 h-4" />
                 </Button>
-                <Button variant="danger" size="sm" title="Unpin">
+                <Button variant="danger" size="sm" title="Unpin" onClick={() => handleUnpin(item.placementId)}>
                   <X className="w-4 h-4" />
                 </Button>
               </>}
-            {selectedSection === 'organic' && <Button variant="secondary" size="sm" icon={Pin}>
+            {selectedSection === 'organic' && <Button variant="secondary" size="sm" icon={Pin} onClick={() => handlePin(item._id)}>
                 Pin to Manual
               </Button>}
-          </div>} />
+            {selectedSection === 'unap-blast' && <Button variant="secondary" size="sm" icon={Pin} onClick={() => handlePin(item._id)}>
+                Pin to Manual
+              </Button>}
+          </div>} />}
     </div>;
 }
