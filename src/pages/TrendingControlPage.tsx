@@ -11,6 +11,8 @@ export function TrendingControlPage() {
   const [topUblasts, setTopUblasts] = useState<any[]>([]);
   const [manualPinned, setManualPinned] = useState<any[]>([]);
   const [organicTrending, setOrganicTrending] = useState<any[]>([]);
+  const [ublastCampaigns, setUblastCampaigns] = useState<any[]>([]);
+  const [approvedSubmissions, setApprovedSubmissions] = useState<any[]>([]);
 
   useEffect(() => {
     loadTrending();
@@ -19,15 +21,25 @@ export function TrendingControlPage() {
   async function loadTrending() {
     setLoading(true);
     setError(null);
-    const result = await apiRequest({ path: '/api/admin/trending/overview' });
-    if (!result.ok) {
-      setError(result.data?.error || 'Failed to load trending data.');
+    const [trendResult, ublastsResult, submissionsResult] = await Promise.all([
+      apiRequest({ path: '/api/admin/trending/overview' }),
+      apiRequest({ path: '/api/admin/ublasts' }),
+      apiRequest({ path: '/api/admin/ublasts/submissions?status=approved' })
+    ]);
+    if (!trendResult.ok) {
+      setError(trendResult.data?.error || 'Failed to load trending data.');
       setLoading(false);
       return;
     }
-    setTopUblasts(result.data.top || []);
-    setManualPinned(result.data.manual || []);
-    setOrganicTrending(result.data.organic || []);
+    setTopUblasts(trendResult.data.top || []);
+    setManualPinned(trendResult.data.manual || []);
+    setOrganicTrending(trendResult.data.organic || []);
+    if (ublastsResult.ok) {
+      setUblastCampaigns(ublastsResult.data.ublasts || []);
+    }
+    if (submissionsResult.ok) {
+      setApprovedSubmissions(submissionsResult.data.submissions || []);
+    }
     setLoading(false);
   }
 
@@ -78,6 +90,49 @@ export function TrendingControlPage() {
     key: 'status',
     header: 'Status',
     render: () => <StatusBadge status="UNAP Blast" />
+  }];
+
+  const approvedByUblastId = new Map(
+    approvedSubmissions
+      .filter((submission) => submission.approvedUblastId)
+      .map((submission) => [submission.approvedUblastId.toString(), submission]),
+  );
+
+  function resolveScheduledFor(blast: any) {
+    if (blast.scheduledFor) return blast.scheduledFor;
+    const submission = approvedByUblastId.get(blast._id?.toString?.() || '');
+    return submission?.proposedDate || null;
+  }
+
+  const campaignColumns: Column<any>[] = [{
+    key: 'title',
+    header: 'UBlast',
+    render: blast => <div className="flex items-center gap-3">
+          {blast.mediaUrl && <img src={blast.mediaUrl} alt="" className="w-12 h-12 rounded object-cover" />}
+          <div>
+            <p className="font-medium text-text-primary">
+              {blast.title || 'Untitled'}
+            </p>
+            <p className="text-sm text-text-secondary truncate max-w-xs">
+              {blast.content || 'No content'}
+            </p>
+          </div>
+        </div>
+  }, {
+    key: 'status',
+    header: 'Status',
+    render: blast => <StatusBadge status={blast.status} />
+  }, {
+    key: 'scheduledFor',
+    header: 'Scheduled For',
+    render: blast => {
+      const scheduledFor = resolveScheduledFor(blast);
+      return scheduledFor ? new Date(scheduledFor).toLocaleString() : 'N/A';
+    }
+  }, {
+    key: 'createdBy',
+    header: 'Created By',
+    render: blast => blast.createdBy ? `User ${blast.createdBy}` : 'Admin'
   }];
 
   const postColumns: Column<any>[] = [{
@@ -201,5 +256,18 @@ export function TrendingControlPage() {
                 Pin to Manual
               </Button>}
           </div>} />}
+
+      {!loading && selectedSection === 'unap-blast' && <div className="bg-surface border border-slate-700 rounded-lg p-4 mt-6">
+          <h3 className="text-lg font-semibold text-text-primary mb-4">
+            User-Created UBlasts
+          </h3>
+          {ublastCampaigns.filter((blast) => blast.createdBy).length === 0 ? <div className="text-sm text-text-secondary">
+              No user-created UBlasts yet.
+            </div> : <DataTable data={ublastCampaigns.filter((blast) => blast.createdBy)} columns={campaignColumns} actions={blast => <div className="flex gap-2">
+                  <Button variant="secondary" size="sm" icon={Pin} onClick={() => handlePin(blast._id)}>
+                    Pin to Manual
+                  </Button>
+                </div>} />}
+        </div>}
     </div>;
 }

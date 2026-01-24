@@ -35,7 +35,7 @@ export function SubmissionsPage() {
     header: 'UNAP Blast',
     render: submission => <div>
           <p className="font-medium text-text-primary">
-            {submission.ublastId?.title || 'Untitled'}
+            {submission.title || submission.ublastId?.title || 'Untitled'}
           </p>
           <p className="text-xs text-text-secondary">
             ID: {submission.ublastId?._id || submission.ublastId}
@@ -46,12 +46,16 @@ export function SubmissionsPage() {
     header: 'Submission',
     render: submission => <div className="max-w-xs">
           <p className="text-sm text-text-secondary truncate">
-            {submission.content}
+            {submission.content || 'No description'}
           </p>
           {submission.attachments && submission.attachments.length > 0 && <p className="text-xs text-primary mt-1">
               {submission.attachments.length} attachment(s)
             </p>}
         </div>
+  }, {
+    key: 'proposedDate',
+    header: 'Proposed',
+    render: submission => submission.proposedDate ? new Date(submission.proposedDate).toLocaleString() : 'N/A'
   }, {
     key: 'submittedAt',
     header: 'Submitted',
@@ -192,7 +196,7 @@ export function SubmissionsPage() {
                 UNAP Blast
               </label>
               <p className="text-text-primary font-medium">
-                {selectedSubmission.ublastId?.title || 'Untitled'}
+                {selectedSubmission.title || selectedSubmission.ublastId?.title || 'Untitled'}
               </p>
             </div>
 
@@ -201,7 +205,7 @@ export function SubmissionsPage() {
                 Submission Content
               </label>
               <div className="bg-slate-800/50 rounded-lg p-4 text-text-primary">
-                {selectedSubmission.content}
+                {selectedSubmission.content || 'No description'}
               </div>
             </div>
 

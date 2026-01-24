@@ -10,6 +10,7 @@ import { apiRequest } from '../utils/apiClient';
 export function BlastSchedulingPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [scheduledBlasts, setScheduledBlasts] = useState<any[]>([]);
+  const [proposedSubmissions, setProposedSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -26,13 +27,19 @@ export function BlastSchedulingPage() {
   async function loadBlasts() {
     setLoading(true);
     setError(null);
-    const result = await apiRequest({ path: '/api/admin/ublasts' });
-    if (!result.ok) {
-      setError(result.data?.error || 'Failed to load blasts.');
+    const [blastsResult, submissionsResult] = await Promise.all([
+      apiRequest({ path: '/api/admin/ublasts' }),
+      apiRequest({ path: '/api/admin/ublasts/submissions?status=pending' })
+    ]);
+    if (!blastsResult.ok) {
+      setError(blastsResult.data?.error || 'Failed to load blasts.');
       setLoading(false);
       return;
     }
-    setScheduledBlasts(result.data.ublasts || []);
+    setScheduledBlasts(blastsResult.data.ublasts || []);
+    if (submissionsResult.ok) {
+      setProposedSubmissions(submissionsResult.data.submissions || []);
+    }
     setLoading(false);
   }
 
@@ -102,6 +109,29 @@ export function BlastSchedulingPage() {
     key: 'status',
     header: 'Status',
     render: blast => <StatusBadge status={blast.status} />
+  }];
+  const submissionColumns: Column<any>[] = [{
+    key: 'title',
+    header: 'User UBlast',
+    render: submission => <div className="flex items-center gap-3">
+          {submission.mediaUrl && <img src={submission.mediaUrl} alt="" className="w-12 h-12 rounded object-cover" />}
+          <div>
+            <p className="font-medium text-text-primary">
+              {submission.title || 'Untitled'}
+            </p>
+            <p className="text-xs text-text-secondary">
+              {submission.userId?.name || 'Unknown'} • {submission.userId?.email || 'N/A'}
+            </p>
+          </div>
+        </div>
+  }, {
+    key: 'proposedDate',
+    header: 'Proposed For',
+    render: submission => submission.proposedDate ? new Date(submission.proposedDate).toLocaleString() : 'N/A'
+  }, {
+    key: 'submittedAt',
+    header: 'Submitted',
+    render: submission => new Date(submission.createdAt).toLocaleString()
   }];
   return <div className="space-y-6 fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -193,6 +223,23 @@ export function BlastSchedulingPage() {
                 </Button>
               </>}
           </div>} />}
+
+      {/* Proposed User Blasts */}
+      {!loading && <div className="bg-surface border border-slate-700 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-text-primary">
+              User-Submitted Proposed Blasts
+            </h3>
+            <Button variant="ghost" size="sm" onClick={loadBlasts}>
+              Refresh
+            </Button>
+          </div>
+          {proposedSubmissions.length === 0 ? <p className="text-sm text-text-secondary">
+              No pending submissions with proposed dates.
+            </p> : <DataTable data={proposedSubmissions} columns={submissionColumns} actions={submission => <div className="text-xs text-text-secondary">
+                  Status: {submission.status}
+                </div>} />}
+        </div>}
 
       {/* Create Blast Modal */}
       <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Schedule UNAP Social Media Blast" size="lg">
