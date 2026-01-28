@@ -12,7 +12,7 @@ export function StatusBadge({
   const s = status.toLowerCase();
   if (s === 'active' || s === 'resolved' || s === 'open') {
     styles = 'bg-success-bg text-success-text border-green-500/20';
-  } else if (s === 'restricted' || s === 'reported' || s === 'suspended' || s === 'removed') {
+  } else if (s === 'restricted' || s === 'reported' || s === 'suspended' || s === 'removed' || s === 'blocked') {
     styles = 'bg-error-bg text-error-text border-red-500/20';
   } else if (s === 'in progress') {
     styles = 'bg-blue-500/10 text-blue-400 border-blue-500/20';

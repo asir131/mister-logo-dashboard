@@ -1,22 +1,31 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DataTable, Column } from '../components/ui/DataTable';
 import { Button } from '../components/ui/Button';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
-import { mockModerationActions, mockUsers, mockPosts } from '../utils/mockData';
+import { mockModerationActions, mockPosts } from '../utils/mockData';
 import { ModerationAction } from '../types';
 import { Shield, Ban, CheckCircle, Trash2, AlertTriangle } from 'lucide-react';
+import { apiRequest } from '../utils/apiClient';
 export function ModerationPage() {
   const [activeTab, setActiveTab] = useState<'users' | 'posts' | 'history'>('users');
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<string>('');
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [usersPage, setUsersPage] = useState(1);
+  const [usersTotalPages, setUsersTotalPages] = useState(1);
+  const usersLimit = 10;
   const userColumns: Column<any>[] = [{
     key: 'user',
     header: 'User',
     render: user => <div className="flex items-center gap-3">
-          <img src={user.avatar} alt="" className="w-10 h-10 rounded-full" />
+          {user.avatar ? <img src={user.avatar} alt="" className="w-10 h-10 rounded-full" /> : <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xs text-text-secondary">
+              {user.name?.[0] || 'U'}
+            </div>}
           <div>
             <p className="font-medium text-text-primary">{user.name}</p>
             <p className="text-xs text-text-secondary">{user.username}</p>
@@ -26,6 +35,10 @@ export function ModerationPage() {
     key: 'status',
     header: 'Status',
     render: user => <StatusBadge status={user.status} />
+  }, {
+    key: 'ublast',
+    header: 'UBlast Block',
+    render: user => <StatusBadge status={user.ublastBlocked ? 'Blocked' : 'Active'} />
   }, {
     key: 'followers',
     header: 'Followers',
@@ -86,6 +99,48 @@ export function ModerationPage() {
     setSelectedAction(actionType);
     setIsActionModalOpen(true);
   };
+
+  async function loadUsers(page = 1) {
+    setUsersLoading(true);
+    setUsersError(null);
+    const result = await apiRequest({
+      path: `/api/admin/users?page=${page}&limit=${usersLimit}`
+    });
+    if (!result.ok) {
+      setUsersError(result.data?.error || 'Failed to load users.');
+      setUsersLoading(false);
+      return;
+    }
+    setUsers(result.data?.users || []);
+    setUsersPage(result.data?.page || 1);
+    setUsersTotalPages(result.data?.totalPages || 1);
+    setUsersLoading(false);
+  }
+
+  async function updateUserRestriction(userId: string, action: 'restrict' | 'unrestrict') {
+    const result = await apiRequest({
+      path: `/api/admin/users/${userId}/${action}`,
+      method: 'PATCH'
+    });
+    if (!result.ok) {
+      setUsersError(result.data?.error || 'Failed to update user.');
+      return;
+    }
+    setUsers(prev => prev.map(user => user.id === userId ? {
+      ...user,
+      status: result.data.status || user.status,
+      ublastBlocked: typeof result.data.ublastBlocked === 'boolean'
+        ? result.data.ublastBlocked
+        : user.ublastBlocked,
+      ublastBlockedUntil: result.data.ublastBlockedUntil ?? user.ublastBlockedUntil
+    } : user));
+  }
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      loadUsers(usersPage);
+    }
+  }, [activeTab, usersPage]);
   return <div className="space-y-6 fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -148,17 +203,29 @@ export function ModerationPage() {
               Delete User
             </Button>
           </div>
-          <DataTable data={mockUsers} columns={userColumns} actions={user => <div className="flex gap-2">
-                {user.status === 'Active' && <Button variant="secondary" size="sm">
+          {usersError && <div className="text-sm text-red-400">{usersError}</div>}
+          {usersLoading && <div className="text-sm text-text-secondary">Loading users...</div>}
+          <DataTable data={users} columns={userColumns} actions={user => <div className="flex gap-2">
+                {!user.ublastBlocked && <Button variant="secondary" size="sm" onClick={() => updateUserRestriction(user.id, 'restrict')}>
                     Restrict
                   </Button>}
-                {user.status === 'Restricted' && <Button variant="secondary" size="sm">
+                {user.ublastBlocked && <Button variant="secondary" size="sm" onClick={() => updateUserRestriction(user.id, 'unrestrict')}>
                     Unrestrict
                   </Button>}
-                <Button variant="danger" size="sm">
-                  Block
-                </Button>
               </div>} />
+          <div className="flex items-center justify-between text-sm text-text-secondary">
+            <span>
+              Page {usersPage} of {usersTotalPages}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setUsersPage(prev => Math.max(1, prev - 1))} disabled={usersPage <= 1 || usersLoading}>
+                Previous
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setUsersPage(prev => Math.min(usersTotalPages, prev + 1))} disabled={usersPage >= usersTotalPages || usersLoading}>
+                Next
+              </Button>
+            </div>
+          </div>
         </>}
 
       {/* Post Moderation Tab */}
