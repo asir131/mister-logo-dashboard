@@ -5,7 +5,7 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
-import { mockModerationActions, mockPosts } from '../utils/mockData';
+import { mockModerationActions } from '../utils/mockData';
 import { ModerationAction } from '../types';
 import { Shield, Ban, CheckCircle, Trash2, AlertTriangle } from 'lucide-react';
 import { apiRequest } from '../utils/apiClient';
@@ -18,7 +18,13 @@ export function ModerationPage() {
   const [usersError, setUsersError] = useState<string | null>(null);
   const [usersPage, setUsersPage] = useState(1);
   const [usersTotalPages, setUsersTotalPages] = useState(1);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsError, setPostsError] = useState<string | null>(null);
+  const [postsPage, setPostsPage] = useState(1);
+  const [postsTotalPages, setPostsTotalPages] = useState(1);
   const usersLimit = 10;
+  const postsLimit = 10;
   const userColumns: Column<any>[] = [{
     key: 'user',
     header: 'User',
@@ -51,11 +57,11 @@ export function ModerationPage() {
     key: 'post',
     header: 'Post',
     render: post => <div className="flex items-center gap-3">
-          {post.thumbnail && <img src={post.thumbnail} alt="" className="w-12 h-12 rounded object-cover" />}
+          {post.mediaUrl && <img src={post.mediaUrl} alt="" className="w-12 h-12 rounded object-cover" />}
           <div>
-            <p className="font-medium text-text-primary">{post.user.name}</p>
+            <p className="font-medium text-text-primary">{post.user?.name}</p>
             <p className="text-sm text-text-secondary truncate max-w-xs">
-              {post.content}
+              {post.content || ''}
             </p>
           </div>
         </div>
@@ -66,7 +72,7 @@ export function ModerationPage() {
   }, {
     key: 'stats',
     header: 'Engagement',
-    render: post => `${post.stats.views.toLocaleString()} views`
+    render: post => `${post.stats?.views?.toLocaleString?.() || 0} views`
   }];
   const historyColumns: Column<ModerationAction>[] = [{
     key: 'action',
@@ -136,11 +142,31 @@ export function ModerationPage() {
     } : user));
   }
 
+  async function loadPosts(page = 1) {
+    setPostsLoading(true);
+    setPostsError(null);
+    const result = await apiRequest({
+      path: `/api/admin/posts?page=${page}&limit=${postsLimit}`
+    });
+    if (!result.ok) {
+      setPostsError(result.data?.error || 'Failed to load posts.');
+      setPostsLoading(false);
+      return;
+    }
+    setPosts(result.data?.posts || []);
+    setPostsPage(result.data?.page || 1);
+    setPostsTotalPages(result.data?.totalPages || 1);
+    setPostsLoading(false);
+  }
+
   useEffect(() => {
     if (activeTab === 'users') {
       loadUsers(usersPage);
     }
-  }, [activeTab, usersPage]);
+    if (activeTab === 'posts') {
+      loadPosts(postsPage);
+    }
+  }, [activeTab, usersPage, postsPage]);
   return <div className="space-y-6 fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -241,7 +267,9 @@ export function ModerationPage() {
               Permanently Delete
             </Button>
           </div>
-          <DataTable data={mockPosts.filter(p => !p.isUnapBlast)} columns={postColumns} actions={post => <div className="flex gap-2">
+          {postsError && <div className="text-sm text-red-400">{postsError}</div>}
+          {postsLoading && <div className="text-sm text-text-secondary">Loading posts...</div>}
+          <DataTable data={posts} columns={postColumns} actions={post => <div className="flex gap-2">
                 {post.status === 'Active' && <Button variant="danger" size="sm">
                     Remove
                   </Button>}
@@ -252,6 +280,19 @@ export function ModerationPage() {
                   Delete
                 </Button>
               </div>} />
+          <div className="flex items-center justify-between text-sm text-text-secondary">
+            <span>
+              Page {postsPage} of {postsTotalPages}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setPostsPage(prev => Math.max(1, prev - 1))} disabled={postsPage <= 1 || postsLoading}>
+                Previous
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setPostsPage(prev => Math.min(postsTotalPages, prev + 1))} disabled={postsPage >= postsTotalPages || postsLoading}>
+                Next
+              </Button>
+            </div>
+          </div>
         </>}
 
       {/* Action History Tab */}
