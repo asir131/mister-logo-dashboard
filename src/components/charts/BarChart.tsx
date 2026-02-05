@@ -21,11 +21,11 @@ export function BarChart({
         <RechartsBarChart data={data} margin={{
         top: 5,
         right: 20,
-        bottom: 5,
+        bottom: 30,
         left: 0
       }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-          <XAxis dataKey={xAxisKey} stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+          <XAxis dataKey={xAxisKey} stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} interval={0} angle={-20} textAnchor="end" />
           <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
           <Tooltip cursor={{
           fill: '#334155',

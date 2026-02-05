@@ -9,8 +9,11 @@ import { Plus, Calendar, Edit, Trash2, Send } from 'lucide-react';
 import { apiRequest } from '../utils/apiClient';
 export function BlastSchedulingPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [assignBlast, setAssignBlast] = useState<any | null>(null);
   const [scheduledBlasts, setScheduledBlasts] = useState<any[]>([]);
   const [proposedSubmissions, setProposedSubmissions] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -19,9 +22,15 @@ export function BlastSchedulingPage() {
     scheduledFor: '',
     media: null as File | null
   });
+  const [assignForm, setAssignForm] = useState({
+    userId: '',
+    mode: 'reward',
+    priceCents: ''
+  });
 
   useEffect(() => {
     loadBlasts();
+    loadUsers();
   }, []);
 
   async function loadBlasts() {
@@ -36,11 +45,20 @@ export function BlastSchedulingPage() {
       setLoading(false);
       return;
     }
-    setScheduledBlasts(blastsResult.data.ublasts || []);
+    const rawBlasts = blastsResult.data.ublasts || [];
+    const visibleBlasts = rawBlasts.filter((blast: any) => blast.rewardType !== 'reward');
+    setScheduledBlasts(visibleBlasts);
     if (submissionsResult.ok) {
       setProposedSubmissions(submissionsResult.data.submissions || []);
     }
     setLoading(false);
+  }
+
+  async function loadUsers() {
+    const result = await apiRequest({ path: '/api/admin/users?limit=200' });
+    if (result.ok) {
+      setUsers(result.data?.users || []);
+    }
   }
 
   async function handleCreateBlast() {
@@ -210,9 +228,20 @@ export function BlastSchedulingPage() {
       {/* Scheduled Blasts Table */}
       {loading && <div className="text-text-secondary">Loading scheduled blasts...</div>}
       {error && <div className="text-red-400 text-sm">{error}</div>}
-      {!loading && <DataTable data={scheduledBlasts} columns={columns} actions={blast => <div className="flex gap-2">
+  {!loading && <DataTable data={scheduledBlasts} columns={columns} actions={blast => <div className="flex gap-2">
             <Button variant="ghost" size="sm" title="Edit">
               <Edit className="w-4 h-4" />
+            </Button>
+            <Button variant="secondary" size="sm" title="Assign to User" onClick={() => {
+          setAssignBlast(blast);
+          setAssignForm({
+            userId: '',
+            mode: 'reward',
+            priceCents: ''
+          });
+          setIsAssignModalOpen(true);
+        }}>
+              Assign
             </Button>
             {blast.status === 'scheduled' && <>
                 <Button variant="secondary" size="sm" title="Send Now" onClick={() => handleRelease(blast._id)}>
@@ -317,6 +346,75 @@ export function BlastSchedulingPage() {
               Cancel
             </Button>
             <Button icon={Calendar} onClick={handleCreateBlast}>Schedule Blast</Button>
+          </div>
+        </div>
+      </Modal>
+      <Modal isOpen={isAssignModalOpen} onClose={() => setIsAssignModalOpen(false)} title="Assign UBlast to User" size="lg">
+        <div className="space-y-6">
+          <div className="text-sm text-text-secondary">
+            Blast: <span className="text-text-primary">{assignBlast?.title || '—'}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant={assignForm.mode === 'reward' ? 'primary' : 'secondary'} onClick={() => setAssignForm(prev => ({
+            ...prev,
+            mode: 'reward'
+          }))}>
+              Reward UBlast
+            </Button>
+            <Button variant={assignForm.mode === 'offer' ? 'primary' : 'secondary'} onClick={() => setAssignForm(prev => ({
+            ...prev,
+            mode: 'offer'
+          }))}>
+              Sell UBlast
+            </Button>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Select User
+            </label>
+            <select className="w-full bg-surface border border-slate-700 rounded-lg px-3 py-2 text-text-primary" value={assignForm.userId} onChange={event => setAssignForm(prev => ({
+            ...prev,
+            userId: event.target.value
+          }))}>
+              <option value="">Select a user</option>
+              {users.map((user: any) => <option key={user.id} value={user.id}>
+                  {user.name} ({user.email})
+                </option>)}
+            </select>
+          </div>
+          {assignForm.mode === 'offer' && <Input label="Price (USD)" placeholder="500 (=$5.00)" value={assignForm.priceCents} onChange={event => setAssignForm(prev => ({
+          ...prev,
+          priceCents: event.target.value
+        }))} />}
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+            <Button variant="ghost" onClick={() => setIsAssignModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={async () => {
+            if (!assignBlast?._id || !assignForm.userId) return;
+            if (assignForm.mode === 'reward') {
+              await apiRequest({
+                path: `/api/admin/ublasts/${assignBlast._id}/reward`,
+                method: 'POST',
+                body: {
+                  userId: assignForm.userId
+                }
+              });
+            } else {
+              await apiRequest({
+                path: `/api/admin/ublasts/${assignBlast._id}/offer`,
+                method: 'POST',
+                body: {
+                  userId: assignForm.userId,
+                  priceCents: Number(assignForm.priceCents) || 0,
+                  currency: 'usd'
+                }
+              });
+            }
+            setIsAssignModalOpen(false);
+          }}>
+              Send
+            </Button>
           </div>
         </div>
       </Modal>

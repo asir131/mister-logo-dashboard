@@ -1,62 +1,97 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MetricCard } from '../components/ui/MetricCard';
 import { LineChart } from '../components/charts/LineChart';
 import { BarChart } from '../components/charts/BarChart';
 import { Button } from '../components/ui/Button';
-import { Plus, TrendingUp } from 'lucide-react';
-import { mockMetrics } from '../utils/mockData';
+import { BarChart3, Megaphone, Plus, Share2, TrendingUp, UserCheck, Users } from 'lucide-react';
+import { apiRequest } from '../utils/apiClient';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 export function OverviewPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // Mock chart data
-  const growthData = [{
-    name: 'Mon',
-    users: 4000
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalUposts: 0,
+    totalUblasts: 0,
+    totalUblastShares: 0,
+    totalActiveUsers: 0,
+    ublastSharePercent: 0,
+    ublastSharedCount: 0,
+    ublastShareTarget: 0
+  });
+  const [statsLoaded, setStatsLoaded] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState('');
+  const [growthData, setGrowthData] = useState<Array<{ name: string; users: number }>>([]);
+  const [platformData, setPlatformData] = useState<Array<{ name: string; shares: number }>>([]);
+  const [trendingHashtags, setTrendingHashtags] = useState<Array<{ tag: string; count: number }>>([]);
+  useEffect(() => {
+    let isMounted = true;
+    const loadStats = async () => {
+      setStatsLoading(true);
+      setStatsError('');
+      const result = await apiRequest({
+        path: '/api/admin/stats'
+      });
+      if (!isMounted) return;
+      if (result.ok) {
+        setStats({
+          totalUsers: Number(result.data?.totalUsers || 0),
+          totalUposts: Number(result.data?.totalUposts || 0),
+          totalUblasts: Number(result.data?.totalUblasts || 0),
+          totalUblastShares: Number(result.data?.totalUblastShares || 0),
+          totalActiveUsers: Number(result.data?.totalActiveUsers || 0),
+          ublastSharePercent: Number(result.data?.ublastSharePercent || 0),
+          ublastSharedCount: Number(result.data?.ublastSharedCount || 0),
+          ublastShareTarget: Number(result.data?.ublastShareTarget || 0)
+        });
+        setGrowthData(Array.isArray(result.data?.growthData) ? result.data.growthData : []);
+        setPlatformData(Array.isArray(result.data?.platformData) ? result.data.platformData : []);
+        setTrendingHashtags(Array.isArray(result.data?.trendingHashtags) ? result.data.trendingHashtags : []);
+        setStatsLoaded(true);
+        setStatsLoading(false);
+      } else {
+        setStatsLoading(false);
+        setStatsError(result.data?.error || 'Failed to load stats.');
+      }
+    };
+    loadStats();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+  const formatValue = (value: number) => value.toLocaleString();
+  const displayValue = (value: number) => {
+    if (statsLoading) return 'Loading...';
+    if (statsError) return '—';
+    if (!statsLoaded) return '—';
+    return formatValue(value);
+  };
+  const percentValue = statsLoading ? 0 : Math.max(0, Math.min(100, stats.ublastSharePercent));
+  const percentLabel = statsLoading || statsError ? '—' : `${percentValue}%`;
+  const shareDetail = statsLoading || statsError
+    ? 'Loading...'
+    : `${formatValue(stats.ublastSharedCount)} of ${formatValue(stats.ublastShareTarget)} users shared the latest UBlast in 24 hours.`;
+  const metrics = [{
+    label: 'Total Users',
+    value: displayValue(stats.totalUsers),
+    icon: Users
   }, {
-    name: 'Tue',
-    users: 3000
+    label: 'Total UPosts',
+    value: displayValue(stats.totalUposts),
+    icon: BarChart3
   }, {
-    name: 'Wed',
-    users: 2000
+    label: 'Total UBlasts',
+    value: displayValue(stats.totalUblasts),
+    icon: Megaphone
   }, {
-    name: 'Thu',
-    users: 2780
+    label: 'UBlast Shares',
+    value: displayValue(stats.totalUblastShares),
+    icon: Share2
   }, {
-    name: 'Fri',
-    users: 1890
-  }, {
-    name: 'Sat',
-    users: 2390
-  }, {
-    name: 'Sun',
-    users: 3490
-  }];
-  const platformData = [{
-    name: 'Instagram',
-    shares: 4000
-  }, {
-    name: 'TikTok',
-    shares: 3000
-  }, {
-    name: 'YouTube',
-    shares: 2000
-  }, {
-    name: 'Spotify',
-    shares: 2780
-  }];
-  const trendingHashtags = [{
-    tag: '#NewMusicFriday',
-    count: '12.5k'
-  }, {
-    tag: '#DanceChallenge',
-    count: '8.2k'
-  }, {
-    tag: '#BehindTheScenes',
-    count: '6.4k'
-  }, {
-    tag: '#TourLife',
-    count: '5.1k'
+    label: 'Active Users',
+    value: displayValue(stats.totalActiveUsers),
+    icon: UserCheck
   }];
   return <div className="space-y-8 fade-in">
       {/* Header */}
@@ -75,12 +110,15 @@ export function OverviewPage() {
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {mockMetrics.map((metric, index) => <MetricCard key={index} {...metric} />)}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+        {metrics.map((metric, index) => <MetricCard key={index} {...metric} />)}
       </div>
+      {statsError && <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {statsError}
+        </div>}
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* User Growth Chart */}
         <div className="lg:col-span-2 bg-surface border border-slate-700 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-text-primary mb-6">
@@ -90,12 +128,12 @@ export function OverviewPage() {
         </div>
 
         {/* Platform Breakdown */}
-        <div className="bg-surface border border-slate-700 rounded-xl p-6">
+        <div className="lg:col-span-2 bg-surface border border-slate-700 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-text-primary mb-6">
             Shares by Platform
           </h3>
-          <BarChart data={platformData} dataKey="shares" xAxisKey="name" colors={['#E1306C', '#000000', '#FF0000', '#1DB954']} // Brand colors roughly
-        height={300} />
+          <BarChart data={platformData} dataKey="shares" xAxisKey="name" colors={['#E1306C', '#010101', '#FF0000', '#FFFC00', '#1DA1F2', '#1877F2']} // Instagram, TikTok, YouTube, Snapchat, Twitter, Facebook
+        height={360} />
         </div>
       </div>
 
@@ -109,10 +147,13 @@ export function OverviewPage() {
             <TrendingUp className="w-5 h-5 text-primary" />
           </div>
           <div className="space-y-4">
+            {trendingHashtags.length === 0 && <div className="text-sm text-text-secondary">
+                {statsLoading ? 'Loading hashtags...' : 'No hashtags found yet.'}
+              </div>}
             {trendingHashtags.map((item, index) => <div key={index} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors">
                 <span className="font-medium text-primary">{item.tag}</span>
                 <span className="text-sm text-text-secondary">
-                  {item.count} posts
+                  {item.count.toLocaleString()} posts
                 </span>
               </div>)}
           </div>
@@ -121,15 +162,15 @@ export function OverviewPage() {
         <div className="bg-gradient-to-br from-primary to-primary-gradient rounded-xl p-6 text-white relative overflow-hidden">
           <div className="relative z-10">
             <h3 className="text-xl font-bold mb-2">24-Hour Rule Status</h3>
-            <p className="text-blue-100 mb-6">
-              94% of users have shared the latest official post.
-            </p>
+            <p className="text-blue-100 mb-6">{shareDetail}</p>
             <div className="w-full bg-black/20 rounded-full h-4 mb-2">
-              <div className="bg-white rounded-full h-4 w-[94%] transition-all duration-1000"></div>
+              <div className="bg-white rounded-full h-4 transition-all duration-1000" style={{
+              width: `${percentValue}%`
+            }}></div>
             </div>
             <div className="flex justify-between text-sm text-blue-100">
               <span>0%</span>
-              <span>Target: 100%</span>
+              <span>{percentLabel}</span>
             </div>
           </div>
           {/* Decorative circles */}
