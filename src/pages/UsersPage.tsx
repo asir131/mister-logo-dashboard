@@ -6,23 +6,31 @@ import { Button } from '../components/ui/Button';
 import { apiRequest } from '../utils/apiClient';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import {
+  fetchOffersSummary,
+  fetchRewardedData,
+  fetchUsers,
+  setFilter,
+  setPage,
+  setRewardedPage,
+} from '../store/slices/usersSlice';
 export function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<'all' | 'active' | 'restricted' | 'rewarded'>('all');
-  const [users, setUsers] = useState<any[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [usersError, setUsersError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [offersSummary, setOffersSummary] = useState({
-    totalEarningsCents: 0,
-    statusCounts: { pending: 0, paid: 0, cancelled: 0, expired: 0 },
-    perUblast: []
-  });
-  const [offers, setOffers] = useState<any[]>([]);
-  const [rewardedUblasts, setRewardedUblasts] = useState<any[]>([]);
-  const [rewardedPage, setRewardedPage] = useState(1);
-  const [rewardedTotalPages, setRewardedTotalPages] = useState(1);
+  const dispatch = useAppDispatch();
+  const {
+    filter,
+    page,
+    totalPages,
+    users,
+    loading: usersLoading,
+    error: usersError,
+    offersSummary,
+    offers,
+    rewarded,
+    rewardedPage,
+    rewardedTotalPages,
+  } = useAppSelector((state) => state.users);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [offerUser, setOfferUser] = useState<any | null>(null);
   const [ublasts, setUblasts] = useState<any[]>([]);
@@ -107,49 +115,17 @@ export function UsersPage() {
   }];
 
   useEffect(() => {
-    async function loadUsers() {
-      if (filter === 'rewarded') return;
-      setUsersLoading(true);
-      setUsersError(null);
-      const result = await apiRequest({
-        path: `/api/admin/users?page=${page}&limit=${limit}&filter=${filter}`
-      });
-      if (!result.ok) {
-        setUsersError(result.data?.error || 'Failed to load users.');
-        setUsersLoading(false);
-        return;
-      }
-      setUsers(result.data?.users || []);
-      setTotalPages(result.data?.totalPages || 1);
-      setUsersLoading(false);
-    }
-    loadUsers();
-  }, [page, filter]);
+    if (filter === 'rewarded') return;
+    dispatch(fetchUsers({ page, filter, limit }));
+  }, [dispatch, page, filter]);
 
   useEffect(() => {
-    async function loadSummary() {
-      const result = await apiRequest({
-        path: '/api/admin/ublast-offers/summary'
-      });
-      if (result.ok) {
-        setOffersSummary({
-          totalEarningsCents: Number(result.data?.totalEarningsCents || 0),
-          statusCounts: result.data?.statusCounts || {
-            pending: 0,
-            paid: 0,
-            cancelled: 0,
-            expired: 0
-          },
-          perUblast: Array.isArray(result.data?.perUblast) ? result.data.perUblast : []
-        });
-      }
-    }
-    loadSummary();
-  }, []);
+    dispatch(fetchOffersSummary());
+  }, [dispatch]);
 
   useEffect(() => {
     async function loadUblasts() {
-      const result = await apiRequest({ path: '/api/admin/ublasts' });
+      const result = await apiRequest({ path: '/api/admin/ublasts?limit=200' });
       if (result.ok) {
         setUblasts(result.data?.ublasts || []);
       }
@@ -158,23 +134,9 @@ export function UsersPage() {
   }, []);
 
   useEffect(() => {
-    async function loadRewarded() {
-      if (filter !== 'rewarded') return;
-      const [offersResult, rewardedResult] = await Promise.all([
-        apiRequest({ path: '/api/admin/ublast-offers?limit=50' }),
-        apiRequest({ path: `/api/admin/rewarded-ublasts?page=${rewardedPage}&limit=20` })
-      ]);
-      if (offersResult.ok) {
-        setOffers(offersResult.data?.offers || []);
-      }
-      if (rewardedResult.ok) {
-        setRewardedUblasts(rewardedResult.data?.rewarded || []);
-        setRewardedPage(rewardedResult.data?.page || rewardedPage);
-        setRewardedTotalPages(rewardedResult.data?.totalPages || 1);
-      }
-    }
-    loadRewarded();
-  }, [filter, rewardedPage]);
+    if (filter !== 'rewarded') return;
+    dispatch(fetchRewardedData({ page: rewardedPage }));
+  }, [dispatch, filter, rewardedPage]);
 
   const filteredUsers = useMemo(() => users.filter(user => user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || user.email?.toLowerCase().includes(searchTerm.toLowerCase())), [users, searchTerm]);
   return <div className="space-y-6 fade-in">
@@ -208,8 +170,10 @@ export function UsersPage() {
         id: 'rewarded',
         label: 'Rewarded Ublasty'
       }].map(item => <button key={item.id} onClick={() => {
-        setPage(1);
-        setFilter(item.id as any);
+        dispatch(setFilter(item.id as any));
+        if (item.id === 'rewarded') {
+          dispatch(setRewardedPage(1));
+        }
       }} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${filter === item.id ? 'bg-primary/20 text-primary' : 'bg-slate-800 text-text-secondary hover:bg-slate-700 hover:text-text-primary'}`}>
             {item.label}
           </button>)}
@@ -263,10 +227,10 @@ export function UsersPage() {
               Page {page} of {totalPages}
             </span>
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setPage(prev => Math.max(1, prev - 1))} disabled={page <= 1 || usersLoading}>
+              <Button variant="ghost" size="sm" onClick={() => dispatch(setPage(Math.max(1, page - 1)))} disabled={page <= 1 || usersLoading}>
                 Previous
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setPage(prev => Math.min(totalPages, prev + 1))} disabled={page >= totalPages || usersLoading}>
+              <Button variant="ghost" size="sm" onClick={() => dispatch(setPage(Math.min(totalPages, page + 1)))} disabled={page >= totalPages || usersLoading}>
                 Next
               </Button>
             </div>
@@ -275,7 +239,7 @@ export function UsersPage() {
       {filter === 'rewarded' && <div className="space-y-6">
           <div>
             <h3 className="text-lg font-semibold text-text-primary mb-3">Rewarded UBlasts</h3>
-            <DataTable data={rewardedUblasts} columns={[{
+            <DataTable data={rewarded} columns={[{
           key: 'title',
           header: 'UBlast',
           render: item => <div>
@@ -302,10 +266,10 @@ export function UsersPage() {
                 Page {rewardedPage} of {rewardedTotalPages}
               </span>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setRewardedPage(prev => Math.max(1, prev - 1))} disabled={rewardedPage <= 1}>
+                <Button variant="ghost" size="sm" onClick={() => dispatch(setRewardedPage(Math.max(1, rewardedPage - 1)))} disabled={rewardedPage <= 1}>
                   Previous
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setRewardedPage(prev => Math.min(rewardedTotalPages, prev + 1))} disabled={rewardedPage >= rewardedTotalPages}>
+                <Button variant="ghost" size="sm" onClick={() => dispatch(setRewardedPage(Math.min(rewardedTotalPages, rewardedPage + 1)))} disabled={rewardedPage >= rewardedTotalPages}>
                   Next
                 </Button>
               </div>
@@ -398,7 +362,7 @@ export function UsersPage() {
           media: event.target.files?.[0] || null
         }))} />
             </div>}
-          {offerForm.mode === 'offer' && <Input label="Price (USD)" placeholder="500 (=$5.00)" value={offerForm.priceCents} onChange={event => setOfferForm(prev => ({
+          {offerForm.mode === 'offer' && <Input label="Price (USD)" placeholder="5.00" value={offerForm.priceCents} onChange={event => setOfferForm(prev => ({
           ...prev,
           priceCents: event.target.value
         }))} />}
@@ -456,7 +420,7 @@ export function UsersPage() {
                 method: 'POST',
                 body: {
                   userId: offerUser.id,
-                  priceCents: Number(offerForm.priceCents) || 0,
+                  priceDollars: Number(offerForm.priceCents) || 0,
                   currency: 'usd'
                 }
               });

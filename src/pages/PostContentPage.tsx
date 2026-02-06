@@ -7,6 +7,8 @@ import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { apiRequest } from '../utils/apiClient';
 import { Eye, Heart, MessageCircle, Share2, MoreHorizontal, Instagram, Youtube, Music, Video } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchOfficialPosts, fetchUserPosts } from '../store/slices/postContentSlice';
 
 type AdminPostRow = {
   id: string;
@@ -28,6 +30,7 @@ type OfficialPostRow = {
   status: string;
   createdAt: string;
   createdBy: string;
+  badgeType?: string;
 };
 
 type EngagementResponse = {
@@ -43,13 +46,16 @@ type EngagementResponse = {
 export function PostContentPage() {
   const [activeTab, setActiveTab] = useState('user-posts');
   const [searchTerm, setSearchTerm] = useState('');
-  const [userPosts, setUserPosts] = useState<AdminPostRow[]>([]);
-  const [officialPosts, setOfficialPosts] = useState<OfficialPostRow[]>([]);
-  const [userPage, setUserPage] = useState(1);
-  const [userTotalPages, setUserTotalPages] = useState(1);
-  const [officialPage, setOfficialPage] = useState(1);
-  const [officialTotalPages, setOfficialTotalPages] = useState(1);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useAppDispatch();
+  const {
+    userPosts,
+    officialPosts,
+    userPage,
+    userTotalPages,
+    officialPage,
+    officialTotalPages,
+    loading,
+  } = useAppSelector((state) => state.postContent);
   const [engagementOpen, setEngagementOpen] = useState(false);
   const [activeOfficial, setActiveOfficial] = useState<OfficialPostRow | null>(null);
   const [engagements, setEngagements] = useState<EngagementResponse | null>(null);
@@ -113,7 +119,12 @@ export function PostContentPage() {
     key: 'content',
     header: 'Content',
     render: post => <div className="flex items-center gap-3 max-w-xs">
-          <p className="truncate text-text-secondary">{post.content || post.title}</p>
+          <div>
+            <p className="truncate text-text-secondary">{post.content || post.title}</p>
+            {post.badgeType && <span className="mt-1 inline-block rounded-full bg-slate-800 px-2 py-0.5 text-[10px] text-text-secondary">
+                {post.badgeType}
+              </span>}
+          </div>
         </div>
   }, {
     key: 'type',
@@ -150,28 +161,12 @@ export function PostContentPage() {
     });
   }, [officialPosts, searchTerm]);
 
-  async function loadUserPosts(page: number) {
-    setLoading(true);
-    const result = await apiRequest({
-      path: `/api/admin/posts?page=${page}&limit=15`
-    });
-    setLoading(false);
-    if (!result.ok) return;
-    setUserPosts(result.data.posts || []);
-    setUserPage(result.data.page || 1);
-    setUserTotalPages(result.data.totalPages || 1);
+  function loadUserPosts(page: number) {
+    dispatch(fetchUserPosts({ page, limit: 15 }));
   }
 
-  async function loadOfficialPosts(page: number) {
-    setLoading(true);
-    const result = await apiRequest({
-      path: `/api/admin/official-posts?page=${page}&limit=15`
-    });
-    setLoading(false);
-    if (!result.ok) return;
-    setOfficialPosts(result.data.ublasts || []);
-    setOfficialPage(result.data.page || 1);
-    setOfficialTotalPages(result.data.totalPages || 1);
+  function loadOfficialPosts(page: number) {
+    dispatch(fetchOfficialPosts({ page, limit: 15 }));
   }
 
   async function loadEngagements(ublastId: string, page: number) {

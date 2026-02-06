@@ -4,44 +4,33 @@ import { Button } from '../components/ui/Button';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { TrendingUp, Pin, MoveUp, MoveDown, X } from 'lucide-react';
 import { apiRequest } from '../utils/apiClient';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchTrendingControl } from '../store/slices/trendingControlSlice';
 export function TrendingControlPage() {
   const [selectedSection, setSelectedSection] = useState<'unap-blast' | 'manual-pinned' | 'organic'>('unap-blast');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [topUblasts, setTopUblasts] = useState<any[]>([]);
-  const [manualPinned, setManualPinned] = useState<any[]>([]);
-  const [organicTrending, setOrganicTrending] = useState<any[]>([]);
-  const [ublastCampaigns, setUblastCampaigns] = useState<any[]>([]);
-  const [approvedSubmissions, setApprovedSubmissions] = useState<any[]>([]);
+  const [topPage, setTopPage] = useState(1);
+  const [manualPage, setManualPage] = useState(1);
+  const [organicPage, setOrganicPage] = useState(1);
+  const [userUblastsPage, setUserUblastsPage] = useState(1);
+  const userUblastsLimit = 10;
+  const dispatch = useAppDispatch();
+  const {
+    overview,
+    officialBlasts,
+    submissions,
+    meta,
+    loading,
+    error,
+  } = useAppSelector((state) => state.trendingControl);
+  const topUblasts = overview?.top || [];
+  const manualPinned = overview?.manual || [];
+  const organicTrending = overview?.organic || [];
+  const ublastCampaigns = officialBlasts || [];
+  const approvedSubmissions = submissions || [];
 
   useEffect(() => {
-    loadTrending();
-  }, []);
-
-  async function loadTrending() {
-    setLoading(true);
-    setError(null);
-    const [trendResult, ublastsResult, submissionsResult] = await Promise.all([
-      apiRequest({ path: '/api/admin/trending/overview' }),
-      apiRequest({ path: '/api/admin/ublasts' }),
-      apiRequest({ path: '/api/admin/ublasts/submissions?status=approved' })
-    ]);
-    if (!trendResult.ok) {
-      setError(trendResult.data?.error || 'Failed to load trending data.');
-      setLoading(false);
-      return;
-    }
-    setTopUblasts(trendResult.data.top || []);
-    setManualPinned(trendResult.data.manual || []);
-    setOrganicTrending(trendResult.data.organic || []);
-    if (ublastsResult.ok) {
-      setUblastCampaigns(ublastsResult.data.ublasts || []);
-    }
-    if (submissionsResult.ok) {
-      setApprovedSubmissions(submissionsResult.data.submissions || []);
-    }
-    setLoading(false);
-  }
+    dispatch(fetchTrendingControl({ topPage, manualPage, organicPage }));
+  }, [dispatch, topPage, manualPage, organicPage]);
 
   async function handlePin(postId: string) {
     const result = await apiRequest({
@@ -49,7 +38,7 @@ export function TrendingControlPage() {
       method: 'POST',
       body: { postId }
     });
-    if (result.ok) loadTrending();
+    if (result.ok) dispatch(fetchTrendingControl({ topPage, manualPage, organicPage }));
   }
 
   async function handleUnpin(placementId: string) {
@@ -57,7 +46,7 @@ export function TrendingControlPage() {
       path: `/api/admin/trending/manual/${placementId}`,
       method: 'DELETE'
     });
-    if (result.ok) loadTrending();
+    if (result.ok) dispatch(fetchTrendingControl({ topPage, manualPage, organicPage }));
   }
 
   async function handleMove(placementId: string, nextPosition: number) {
@@ -67,7 +56,7 @@ export function TrendingControlPage() {
       method: 'PATCH',
       body: { position: nextPosition }
     });
-    if (result.ok) loadTrending();
+    if (result.ok) dispatch(fetchTrendingControl({ topPage, manualPage, organicPage }));
   }
 
   const ublastColumns: Column<any>[] = [{
@@ -170,6 +159,13 @@ export function TrendingControlPage() {
         return [];
     }
   };
+  const userCreatedUblasts = ublastCampaigns.filter((blast) => blast.createdBy);
+  const userUblastsTotalPages = Math.max(1, Math.ceil(userCreatedUblasts.length / userUblastsLimit));
+  const userUblastsPaged = userCreatedUblasts.slice(
+    (userUblastsPage - 1) * userUblastsLimit,
+    userUblastsPage * userUblastsLimit,
+  );
+
   return <div className="space-y-6 fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -231,7 +227,7 @@ export function TrendingControlPage() {
             </strong>{' '}
             manual slots used
           </p>
-          <Button icon={Pin} onClick={loadTrending}>Refresh</Button>
+          <Button icon={Pin} onClick={() => dispatch(fetchTrendingControl({ topPage, manualPage, organicPage }))}>Refresh</Button>
         </div>}
 
       {/* Data Table */}
@@ -256,18 +252,78 @@ export function TrendingControlPage() {
                 Pin to Manual
               </Button>}
           </div>} />}
+      {!loading && <div className="flex items-center justify-between text-sm text-text-secondary">
+          <span>
+            Page {selectedSection === 'unap-blast' ? meta.top.page : selectedSection === 'manual-pinned' ? meta.manual.page : meta.organic.page}
+            {' '}of{' '}
+            {selectedSection === 'unap-blast' ? meta.top.totalPages : selectedSection === 'manual-pinned' ? meta.manual.totalPages : meta.organic.totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (selectedSection === 'unap-blast') setTopPage(Math.max(1, topPage - 1));
+                if (selectedSection === 'manual-pinned') setManualPage(Math.max(1, manualPage - 1));
+                if (selectedSection === 'organic') setOrganicPage(Math.max(1, organicPage - 1));
+              }}
+              disabled={(selectedSection === 'unap-blast' && topPage <= 1) ||
+                (selectedSection === 'manual-pinned' && manualPage <= 1) ||
+                (selectedSection === 'organic' && organicPage <= 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (selectedSection === 'unap-blast') setTopPage(Math.min(meta.top.totalPages, topPage + 1));
+                if (selectedSection === 'manual-pinned') setManualPage(Math.min(meta.manual.totalPages, manualPage + 1));
+                if (selectedSection === 'organic') setOrganicPage(Math.min(meta.organic.totalPages, organicPage + 1));
+              }}
+              disabled={(selectedSection === 'unap-blast' && topPage >= meta.top.totalPages) ||
+                (selectedSection === 'manual-pinned' && manualPage >= meta.manual.totalPages) ||
+                (selectedSection === 'organic' && organicPage >= meta.organic.totalPages)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>}
 
       {!loading && selectedSection === 'unap-blast' && <div className="bg-surface border border-slate-700 rounded-lg p-4 mt-6">
           <h3 className="text-lg font-semibold text-text-primary mb-4">
             User-Created UBlasts
           </h3>
-          {ublastCampaigns.filter((blast) => blast.createdBy).length === 0 ? <div className="text-sm text-text-secondary">
+          {userCreatedUblasts.length === 0 ? <div className="text-sm text-text-secondary">
               No user-created UBlasts yet.
-            </div> : <DataTable data={ublastCampaigns.filter((blast) => blast.createdBy)} columns={campaignColumns} actions={blast => <div className="flex gap-2">
+            </div> : <DataTable data={userUblastsPaged} columns={campaignColumns} actions={blast => <div className="flex gap-2">
                   <Button variant="secondary" size="sm" icon={Pin} onClick={() => handlePin(blast._id)}>
                     Pin to Manual
                   </Button>
                 </div>} />}
+          {userCreatedUblasts.length > 0 && <div className="flex items-center justify-between text-sm text-text-secondary mt-3">
+              <span>
+                Page {userUblastsPage} of {userUblastsTotalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUserUblastsPage((prev) => Math.max(1, prev - 1))}
+                  disabled={userUblastsPage <= 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setUserUblastsPage((prev) => Math.min(userUblastsTotalPages, prev + 1))}
+                  disabled={userUblastsPage >= userUblastsTotalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>}
         </div>}
     </div>;
 }

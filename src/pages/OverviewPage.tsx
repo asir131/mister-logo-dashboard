@@ -4,67 +4,28 @@ import { LineChart } from '../components/charts/LineChart';
 import { BarChart } from '../components/charts/BarChart';
 import { Button } from '../components/ui/Button';
 import { BarChart3, Megaphone, Plus, Share2, TrendingUp, UserCheck, Users } from 'lucide-react';
-import { apiRequest } from '../utils/apiClient';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchOverview } from '../store/slices/overviewSlice';
 export function OverviewPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalUposts: 0,
-    totalUblasts: 0,
-    totalUblastShares: 0,
-    totalActiveUsers: 0,
-    ublastSharePercent: 0,
-    ublastSharedCount: 0,
-    ublastShareTarget: 0
-  });
-  const [statsLoaded, setStatsLoaded] = useState(false);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [statsError, setStatsError] = useState('');
-  const [growthData, setGrowthData] = useState<Array<{ name: string; users: number }>>([]);
-  const [platformData, setPlatformData] = useState<Array<{ name: string; shares: number }>>([]);
-  const [trendingHashtags, setTrendingHashtags] = useState<Array<{ tag: string; count: number }>>([]);
+  const dispatch = useAppDispatch();
+  const {
+    stats,
+    growthData,
+    platformData,
+    trendingHashtags,
+    loading: statsLoading,
+    error: statsError,
+  } = useAppSelector((state) => state.overview);
   useEffect(() => {
-    let isMounted = true;
-    const loadStats = async () => {
-      setStatsLoading(true);
-      setStatsError('');
-      const result = await apiRequest({
-        path: '/api/admin/stats'
-      });
-      if (!isMounted) return;
-      if (result.ok) {
-        setStats({
-          totalUsers: Number(result.data?.totalUsers || 0),
-          totalUposts: Number(result.data?.totalUposts || 0),
-          totalUblasts: Number(result.data?.totalUblasts || 0),
-          totalUblastShares: Number(result.data?.totalUblastShares || 0),
-          totalActiveUsers: Number(result.data?.totalActiveUsers || 0),
-          ublastSharePercent: Number(result.data?.ublastSharePercent || 0),
-          ublastSharedCount: Number(result.data?.ublastSharedCount || 0),
-          ublastShareTarget: Number(result.data?.ublastShareTarget || 0)
-        });
-        setGrowthData(Array.isArray(result.data?.growthData) ? result.data.growthData : []);
-        setPlatformData(Array.isArray(result.data?.platformData) ? result.data.platformData : []);
-        setTrendingHashtags(Array.isArray(result.data?.trendingHashtags) ? result.data.trendingHashtags : []);
-        setStatsLoaded(true);
-        setStatsLoading(false);
-      } else {
-        setStatsLoading(false);
-        setStatsError(result.data?.error || 'Failed to load stats.');
-      }
-    };
-    loadStats();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    dispatch(fetchOverview());
+  }, [dispatch]);
   const formatValue = (value: number) => value.toLocaleString();
   const displayValue = (value: number) => {
     if (statsLoading) return 'Loading...';
     if (statsError) return '—';
-    if (!statsLoaded) return '—';
     return formatValue(value);
   };
   const percentValue = statsLoading ? 0 : Math.max(0, Math.min(100, stats.ublastSharePercent));

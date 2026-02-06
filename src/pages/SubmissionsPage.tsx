@@ -6,14 +6,17 @@ import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { CheckCircle, XCircle, Eye, FileText } from 'lucide-react';
 import { apiRequest } from '../utils/apiClient';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchSubmissions } from '../store/slices/submissionsSlice';
 export function SubmissionsPage() {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [reviewNotes, setReviewNotes] = useState('');
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const { submissions, loading, error, page, totalPages } = useAppSelector((state) => state.submissions);
+  const [localPage, setLocalPage] = useState(1);
+  const limit = 10;
   const columns: Column<any>[] = [{
     key: 'user',
     header: 'User',
@@ -68,22 +71,18 @@ export function SubmissionsPage() {
   const filteredSubmissions = submissions.filter(sub => filterStatus === 'all' || sub.status === filterStatus);
 
   useEffect(() => {
-    loadSubmissions();
+    setLocalPage(1);
   }, [filterStatus]);
 
-  async function loadSubmissions() {
-    setLoading(true);
-    setError(null);
-    const statusParam = filterStatus === 'all' ? '' : `?status=${filterStatus}`;
-    const result = await apiRequest({ path: `/api/admin/ublasts/submissions${statusParam}` });
-    if (!result.ok) {
-      setError(result.data?.error || 'Failed to load submissions.');
-      setLoading(false);
-      return;
-    }
-    setSubmissions(result.data.submissions || []);
-    setLoading(false);
-  }
+  useEffect(() => {
+    dispatch(
+      fetchSubmissions({
+        status: filterStatus === 'all' ? '' : filterStatus,
+        page: localPage,
+        limit,
+      }),
+    );
+  }, [filterStatus, localPage, dispatch]);
 
   async function handleDecision(submissionId: string, status: 'approved' | 'rejected', notes?: string) {
     const result = await apiRequest({
@@ -93,7 +92,13 @@ export function SubmissionsPage() {
     });
     if (result.ok) {
       setIsReviewModalOpen(false);
-      loadSubmissions();
+      dispatch(
+        fetchSubmissions({
+          status: filterStatus === 'all' ? '' : filterStatus,
+          page: localPage,
+          limit,
+        }),
+      );
     }
   }
   const handleReview = (submission: any) => {
@@ -173,6 +178,17 @@ export function SubmissionsPage() {
                 </Button>
               </>}
           </div>} />}
+      {!loading && <div className="flex items-center justify-between text-sm text-text-secondary">
+          <span>Page {page} of {totalPages}</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setLocalPage(prev => Math.max(1, prev - 1))} disabled={page <= 1}>
+              Previous
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setLocalPage(prev => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>
+              Next
+            </Button>
+          </div>
+        </div>}
 
       {/* Review Modal */}
       <Modal isOpen={isReviewModalOpen} onClose={() => setIsReviewModalOpen(false)} title="Review Submission" size="lg">

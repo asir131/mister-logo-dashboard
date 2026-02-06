@@ -7,15 +7,28 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Plus, Calendar, Edit, Trash2, Send } from 'lucide-react';
 import { apiRequest } from '../utils/apiClient';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchScheduling, fetchSchedulingUsers } from '../store/slices/schedulingSlice';
 export function BlastSchedulingPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignBlast, setAssignBlast] = useState<any | null>(null);
-  const [scheduledBlasts, setScheduledBlasts] = useState<any[]>([]);
-  const [proposedSubmissions, setProposedSubmissions] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const {
+    scheduledBlasts,
+    proposedSubmissions,
+    users,
+    loading,
+    error,
+    blastsPage,
+    blastsTotalPages,
+    submissionsPage,
+    submissionsTotalPages,
+  } = useAppSelector((state) => state.scheduling);
+  const [localBlastsPage, setLocalBlastsPage] = useState(1);
+  const [localSubmissionsPage, setLocalSubmissionsPage] = useState(1);
+  const blastsLimit = 10;
+  const submissionsLimit = 10;
   const [form, setForm] = useState({
     title: '',
     content: '',
@@ -29,37 +42,16 @@ export function BlastSchedulingPage() {
   });
 
   useEffect(() => {
-    loadBlasts();
-    loadUsers();
-  }, []);
-
-  async function loadBlasts() {
-    setLoading(true);
-    setError(null);
-    const [blastsResult, submissionsResult] = await Promise.all([
-      apiRequest({ path: '/api/admin/ublasts' }),
-      apiRequest({ path: '/api/admin/ublasts/submissions?status=pending' })
-    ]);
-    if (!blastsResult.ok) {
-      setError(blastsResult.data?.error || 'Failed to load blasts.');
-      setLoading(false);
-      return;
-    }
-    const rawBlasts = blastsResult.data.ublasts || [];
-    const visibleBlasts = rawBlasts.filter((blast: any) => blast.rewardType !== 'reward');
-    setScheduledBlasts(visibleBlasts);
-    if (submissionsResult.ok) {
-      setProposedSubmissions(submissionsResult.data.submissions || []);
-    }
-    setLoading(false);
-  }
-
-  async function loadUsers() {
-    const result = await apiRequest({ path: '/api/admin/users?limit=200' });
-    if (result.ok) {
-      setUsers(result.data?.users || []);
-    }
-  }
+    dispatch(
+      fetchScheduling({
+        blastsPage: localBlastsPage,
+        blastsLimit,
+        submissionsPage: localSubmissionsPage,
+        submissionsLimit,
+      }),
+    );
+    dispatch(fetchSchedulingUsers());
+  }, [dispatch, localBlastsPage, localSubmissionsPage]);
 
   async function handleCreateBlast() {
     const formData = new FormData();
@@ -76,7 +68,14 @@ export function BlastSchedulingPage() {
     if (result.ok) {
       setIsCreateModalOpen(false);
       setForm({ title: '', content: '', scheduledFor: '', media: null });
-      loadBlasts();
+      dispatch(
+        fetchScheduling({
+          blastsPage: localBlastsPage,
+          blastsLimit,
+          submissionsPage: localSubmissionsPage,
+          submissionsLimit,
+        }),
+      );
     }
   }
 
@@ -85,7 +84,16 @@ export function BlastSchedulingPage() {
       path: `/api/admin/ublasts/${ublastId}/release`,
       method: 'POST'
     });
-    if (result.ok) loadBlasts();
+    if (result.ok) {
+      dispatch(
+        fetchScheduling({
+          blastsPage: localBlastsPage,
+          blastsLimit,
+          submissionsPage: localSubmissionsPage,
+          submissionsLimit,
+        }),
+      );
+    }
   }
 
   const columns: Column<any>[] = [{
@@ -228,7 +236,7 @@ export function BlastSchedulingPage() {
       {/* Scheduled Blasts Table */}
       {loading && <div className="text-text-secondary">Loading scheduled blasts...</div>}
       {error && <div className="text-red-400 text-sm">{error}</div>}
-  {!loading && <DataTable data={scheduledBlasts} columns={columns} actions={blast => <div className="flex gap-2">
+      {!loading && <DataTable data={scheduledBlasts} columns={columns} actions={blast => <div className="flex gap-2">
             <Button variant="ghost" size="sm" title="Edit">
               <Edit className="w-4 h-4" />
             </Button>
@@ -252,6 +260,17 @@ export function BlastSchedulingPage() {
                 </Button>
               </>}
           </div>} />}
+      {!loading && <div className="flex items-center justify-between text-sm text-text-secondary mt-3">
+          <span>Page {blastsPage} of {blastsTotalPages}</span>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setLocalBlastsPage(prev => Math.max(1, prev - 1))} disabled={blastsPage <= 1}>
+              Previous
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setLocalBlastsPage(prev => Math.min(blastsTotalPages, prev + 1))} disabled={blastsPage >= blastsTotalPages}>
+              Next
+            </Button>
+          </div>
+        </div>}
 
       {/* Proposed User Blasts */}
       {!loading && <div className="bg-surface border border-slate-700 rounded-xl p-6">
@@ -259,7 +278,12 @@ export function BlastSchedulingPage() {
             <h3 className="text-lg font-semibold text-text-primary">
               User-Submitted Proposed Blasts
             </h3>
-            <Button variant="ghost" size="sm" onClick={loadBlasts}>
+            <Button variant="ghost" size="sm" onClick={() => dispatch(fetchScheduling({
+            blastsPage: localBlastsPage,
+            blastsLimit,
+            submissionsPage: localSubmissionsPage,
+            submissionsLimit
+          }))}>
               Refresh
             </Button>
           </div>
@@ -268,6 +292,17 @@ export function BlastSchedulingPage() {
             </p> : <DataTable data={proposedSubmissions} columns={submissionColumns} actions={submission => <div className="text-xs text-text-secondary">
                   Status: {submission.status}
                 </div>} />}
+          {proposedSubmissions.length > 0 && <div className="flex items-center justify-between text-sm text-text-secondary mt-3">
+              <span>Page {submissionsPage} of {submissionsTotalPages}</span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setLocalSubmissionsPage(prev => Math.max(1, prev - 1))} disabled={submissionsPage <= 1}>
+                  Previous
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setLocalSubmissionsPage(prev => Math.min(submissionsTotalPages, prev + 1))} disabled={submissionsPage >= submissionsTotalPages}>
+                  Next
+                </Button>
+              </div>
+            </div>}
         </div>}
 
       {/* Create Blast Modal */}
@@ -382,7 +417,7 @@ export function BlastSchedulingPage() {
                 </option>)}
             </select>
           </div>
-          {assignForm.mode === 'offer' && <Input label="Price (USD)" placeholder="500 (=$5.00)" value={assignForm.priceCents} onChange={event => setAssignForm(prev => ({
+          {assignForm.mode === 'offer' && <Input label="Price (USD)" placeholder="5.00" value={assignForm.priceCents} onChange={event => setAssignForm(prev => ({
           ...prev,
           priceCents: event.target.value
         }))} />}
@@ -406,7 +441,7 @@ export function BlastSchedulingPage() {
                 method: 'POST',
                 body: {
                   userId: assignForm.userId,
-                  priceCents: Number(assignForm.priceCents) || 0,
+                  priceDollars: Number(assignForm.priceCents) || 0,
                   currency: 'usd'
                 }
               });

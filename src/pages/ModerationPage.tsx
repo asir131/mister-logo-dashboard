@@ -9,20 +9,25 @@ import { mockModerationActions } from '../utils/mockData';
 import { ModerationAction } from '../types';
 import { Shield, Ban, CheckCircle, Trash2, AlertTriangle } from 'lucide-react';
 import { apiRequest } from '../utils/apiClient';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { fetchModerationPosts, fetchModerationUsers, restrictUser, unrestrictUser } from '../store/slices/moderationSlice';
 export function ModerationPage() {
   const [activeTab, setActiveTab] = useState<'users' | 'posts' | 'history'>('users');
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<string>('');
-  const [users, setUsers] = useState<any[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [usersError, setUsersError] = useState<string | null>(null);
-  const [usersPage, setUsersPage] = useState(1);
-  const [usersTotalPages, setUsersTotalPages] = useState(1);
-  const [posts, setPosts] = useState<any[]>([]);
-  const [postsLoading, setPostsLoading] = useState(false);
-  const [postsError, setPostsError] = useState<string | null>(null);
-  const [postsPage, setPostsPage] = useState(1);
-  const [postsTotalPages, setPostsTotalPages] = useState(1);
+  const dispatch = useAppDispatch();
+  const {
+    users,
+    usersPage,
+    usersTotalPages,
+    posts,
+    postsPage,
+    postsTotalPages,
+    loadingUsers: usersLoading,
+    loadingPosts: postsLoading,
+    errorUsers: usersError,
+    errorPosts: postsError,
+  } = useAppSelector((state) => state.moderation);
   const usersLimit = 10;
   const postsLimit = 10;
   const userColumns: Column<any>[] = [{
@@ -37,10 +42,6 @@ export function ModerationPage() {
             <p className="text-xs text-text-secondary">{user.username}</p>
           </div>
         </div>
-  }, {
-    key: 'status',
-    header: 'Status',
-    render: user => <StatusBadge status={user.status} />
   }, {
     key: 'ublast',
     header: 'UBlast Block',
@@ -106,57 +107,20 @@ export function ModerationPage() {
     setIsActionModalOpen(true);
   };
 
-  async function loadUsers(page = 1) {
-    setUsersLoading(true);
-    setUsersError(null);
-    const result = await apiRequest({
-      path: `/api/admin/users?page=${page}&limit=${usersLimit}`
-    });
-    if (!result.ok) {
-      setUsersError(result.data?.error || 'Failed to load users.');
-      setUsersLoading(false);
-      return;
-    }
-    setUsers(result.data?.users || []);
-    setUsersPage(result.data?.page || 1);
-    setUsersTotalPages(result.data?.totalPages || 1);
-    setUsersLoading(false);
+  function loadUsers(page = 1) {
+    dispatch(fetchModerationUsers({ page, limit: usersLimit }));
   }
 
   async function updateUserRestriction(userId: string, action: 'restrict' | 'unrestrict') {
-    const result = await apiRequest({
-      path: `/api/admin/users/${userId}/${action}`,
-      method: 'PATCH'
-    });
-    if (!result.ok) {
-      setUsersError(result.data?.error || 'Failed to update user.');
-      return;
+    if (action === 'restrict') {
+      dispatch(restrictUser({ userId }));
+    } else {
+      dispatch(unrestrictUser({ userId }));
     }
-    setUsers(prev => prev.map(user => user.id === userId ? {
-      ...user,
-      status: result.data.status || user.status,
-      ublastBlocked: typeof result.data.ublastBlocked === 'boolean'
-        ? result.data.ublastBlocked
-        : user.ublastBlocked,
-      ublastBlockedUntil: result.data.ublastBlockedUntil ?? user.ublastBlockedUntil
-    } : user));
   }
 
-  async function loadPosts(page = 1) {
-    setPostsLoading(true);
-    setPostsError(null);
-    const result = await apiRequest({
-      path: `/api/admin/posts?page=${page}&limit=${postsLimit}`
-    });
-    if (!result.ok) {
-      setPostsError(result.data?.error || 'Failed to load posts.');
-      setPostsLoading(false);
-      return;
-    }
-    setPosts(result.data?.posts || []);
-    setPostsPage(result.data?.page || 1);
-    setPostsTotalPages(result.data?.totalPages || 1);
-    setPostsLoading(false);
+  function loadPosts(page = 1) {
+    dispatch(fetchModerationPosts({ page, limit: postsLimit }));
   }
 
   useEffect(() => {
@@ -244,10 +208,10 @@ export function ModerationPage() {
               Page {usersPage} of {usersTotalPages}
             </span>
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setUsersPage(prev => Math.max(1, prev - 1))} disabled={usersPage <= 1 || usersLoading}>
+              <Button variant="ghost" size="sm" onClick={() => loadUsers(Math.max(1, usersPage - 1))} disabled={usersPage <= 1 || usersLoading}>
                 Previous
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setUsersPage(prev => Math.min(usersTotalPages, prev + 1))} disabled={usersPage >= usersTotalPages || usersLoading}>
+              <Button variant="ghost" size="sm" onClick={() => loadUsers(Math.min(usersTotalPages, usersPage + 1))} disabled={usersPage >= usersTotalPages || usersLoading}>
                 Next
               </Button>
             </div>
@@ -285,10 +249,10 @@ export function ModerationPage() {
               Page {postsPage} of {postsTotalPages}
             </span>
             <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={() => setPostsPage(prev => Math.max(1, prev - 1))} disabled={postsPage <= 1 || postsLoading}>
+              <Button variant="ghost" size="sm" onClick={() => loadPosts(Math.max(1, postsPage - 1))} disabled={postsPage <= 1 || postsLoading}>
                 Previous
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setPostsPage(prev => Math.min(postsTotalPages, prev + 1))} disabled={postsPage >= postsTotalPages || postsLoading}>
+              <Button variant="ghost" size="sm" onClick={() => loadPosts(Math.min(postsTotalPages, postsPage + 1))} disabled={postsPage >= postsTotalPages || postsLoading}>
                 Next
               </Button>
             </div>
