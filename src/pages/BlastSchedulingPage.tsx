@@ -13,6 +13,14 @@ export function BlastSchedulingPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignBlast, setAssignBlast] = useState<any | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editBlast, setEditBlast] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    content: '',
+    scheduledFor: '',
+    media: null as File | null
+  });
   const dispatch = useAppDispatch();
   const {
     scheduledBlasts,
@@ -85,6 +93,50 @@ export function BlastSchedulingPage() {
       method: 'POST'
     });
     if (result.ok) {
+      dispatch(
+        fetchScheduling({
+          blastsPage: localBlastsPage,
+          blastsLimit,
+          submissionsPage: localSubmissionsPage,
+          submissionsLimit,
+        }),
+      );
+    }
+  }
+
+  async function handleDelete(ublastId: string) {
+    const result = await apiRequest({
+      path: `/api/admin/ublasts/${ublastId}`,
+      method: 'DELETE'
+    });
+    if (result.ok) {
+      dispatch(
+        fetchScheduling({
+          blastsPage: localBlastsPage,
+          blastsLimit,
+          submissionsPage: localSubmissionsPage,
+          submissionsLimit,
+        }),
+      );
+    }
+  }
+
+  async function handleUpdateBlast() {
+    if (!editBlast?._id) return;
+    const formData = new FormData();
+    if (editForm.title !== undefined) formData.append('title', editForm.title);
+    if (editForm.content !== undefined) formData.append('content', editForm.content);
+    if (editForm.scheduledFor) formData.append('scheduledFor', editForm.scheduledFor);
+    if (editForm.media) formData.append('media', editForm.media);
+
+    const result = await apiRequest({
+      path: `/api/admin/ublasts/${editBlast._id}`,
+      method: 'PATCH',
+      body: formData
+    });
+    if (result.ok) {
+      setIsEditModalOpen(false);
+      setEditBlast(null);
       dispatch(
         fetchScheduling({
           blastsPage: localBlastsPage,
@@ -237,26 +289,25 @@ export function BlastSchedulingPage() {
       {loading && <div className="text-text-secondary">Loading scheduled blasts...</div>}
       {error && <div className="text-red-400 text-sm">{error}</div>}
       {!loading && <DataTable data={scheduledBlasts} columns={columns} actions={blast => <div className="flex gap-2">
-            <Button variant="ghost" size="sm" title="Edit">
+            <Button variant="ghost" size="sm" title="Edit" disabled={!blast.isEditable} onClick={() => {
+          if (!blast.isEditable) return;
+          setEditBlast(blast);
+          setEditForm({
+            title: blast.title || '',
+            content: blast.content || '',
+            scheduledFor: blast.scheduledFor ? new Date(blast.scheduledFor).toISOString().slice(0, 16) : '',
+            media: null
+          });
+          setIsEditModalOpen(true);
+        }}>
               <Edit className="w-4 h-4" />
             </Button>
-            <Button variant="secondary" size="sm" title="Assign to User" onClick={() => {
-          setAssignBlast(blast);
-          setAssignForm({
-            userId: '',
-            mode: 'reward',
-            priceCents: ''
-          });
-          setIsAssignModalOpen(true);
-        }}>
-              Assign
+            <Button variant="danger" size="sm" title="Delete" onClick={() => handleDelete(blast._id)}>
+              <Trash2 className="w-4 h-4" />
             </Button>
             {blast.status === 'scheduled' && <>
                 <Button variant="secondary" size="sm" title="Send Now" onClick={() => handleRelease(blast._id)}>
                   <Send className="w-4 h-4" />
-                </Button>
-                <Button variant="danger" size="sm" title="Cancel">
-                  <Trash2 className="w-4 h-4" />
                 </Button>
               </>}
           </div>} />}
@@ -381,6 +432,41 @@ export function BlastSchedulingPage() {
               Cancel
             </Button>
             <Button icon={Calendar} onClick={handleCreateBlast}>Schedule Blast</Button>
+          </div>
+        </div>
+      </Modal>
+      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit UNAP Blast" size="lg">
+        <div className="space-y-6">
+          <Input label="Blast Title" placeholder="Enter blast title" value={editForm.title} onChange={event => setEditForm(prev => ({
+          ...prev,
+          title: event.target.value
+        }))} />
+
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">
+              Content
+            </label>
+            <textarea className="w-full bg-surface border border-slate-700 rounded-lg p-4 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[150px]" placeholder="What's the message?" value={editForm.content} onChange={event => setEditForm(prev => ({
+          ...prev,
+          content: event.target.value
+        }))}></textarea>
+          </div>
+
+          <Input type="file" label="Media Attachment" className="pt-1.5" onChange={event => setEditForm(prev => ({
+          ...prev,
+          media: event.target.files?.[0] || null
+        }))} />
+
+          <Input type="datetime-local" label="Schedule Date & Time" value={editForm.scheduledFor} onChange={event => setEditForm(prev => ({
+          ...prev,
+          scheduledFor: event.target.value
+        }))} />
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+            <Button variant="ghost" onClick={() => setIsEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button icon={Edit} onClick={handleUpdateBlast}>Save Changes</Button>
           </div>
         </div>
       </Modal>

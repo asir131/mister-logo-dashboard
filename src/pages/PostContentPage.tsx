@@ -94,10 +94,10 @@ export function PostContentPage() {
     header: 'Engagement',
     render: post => <div className="flex gap-3 text-xs text-text-secondary">
           <span className="flex items-center gap-1">
-            <Eye className="w-3 h-3" /> {post.stats.views}
+            <Eye className="w-3 h-3" /> {post.stats?.views ?? 0}
           </span>
           <span className="flex items-center gap-1">
-            <Heart className="w-3 h-3" /> {post.stats.likes}
+            <Heart className="w-3 h-3" /> {post.stats?.likes ?? 0}
           </span>
         </div>
   }, {
