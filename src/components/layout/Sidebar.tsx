@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, Users, MessageSquare, Settings, LogOut, TrendingUp, ClipboardCheck, Calendar, Shield, Mail } from 'lucide-react';
+import { clearAdminToken } from '../../utils/adminSession';
 export function Sidebar() {
   const navigate = useNavigate();
   const navItems = [{
@@ -81,7 +82,14 @@ export function Sidebar() {
             <p className="text-xs text-primary truncate">Super Admin</p>
           </div>
         </div>
-        <button onClick={() => console.log('Logout')} className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-error-text hover:bg-error-bg rounded-lg transition-colors border border-transparent hover:border-red-500/20">
+        <button
+          onClick={() => {
+            clearAdminToken();
+            localStorage.removeItem('unap-admin-key');
+            navigate('/login');
+          }}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-error-text hover:bg-error-bg rounded-lg transition-colors border border-transparent hover:border-red-500/20"
+        >
           <LogOut className="w-4 h-4" />
           Logout
         </button>

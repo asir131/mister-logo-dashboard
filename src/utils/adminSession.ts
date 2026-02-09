@@ -14,5 +14,5 @@ export function clearAdminToken() {
 }
 
 export function hasAdminSession() {
-  return Boolean(getAdminToken() || localStorage.getItem('unap-admin-key'));
+  return Boolean(getAdminToken());
 }

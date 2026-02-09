@@ -9,6 +9,17 @@
   body {
     @apply font-sans text-text-primary bg-gradient-to-br from-background-start to-background-end min-h-screen selection:bg-primary selection:text-white;
   }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
   
   /* Custom Scrollbar for dark theme */
   ::-webkit-scrollbar {
