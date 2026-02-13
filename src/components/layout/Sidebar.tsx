@@ -3,7 +3,11 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, Users, MessageSquare, Settings, LogOut, TrendingUp, ClipboardCheck, Calendar, Shield, Mail, User } from 'lucide-react';
 import { clearAdminToken } from '../../utils/adminSession';
 import logo from '../../assets/misterLogo.png';
-export function Sidebar() {
+type SidebarProps = {
+  variant?: 'desktop' | 'mobile';
+  onNavigate?: () => void;
+};
+export function Sidebar({ variant = 'desktop', onNavigate }: SidebarProps) {
   const navigate = useNavigate();
   const navItems = [{
     icon: LayoutDashboard,
@@ -46,7 +50,12 @@ export function Sidebar() {
     label: 'Settings',
     path: '/settings'
   }];
-  return <aside className="fixed left-0 top-0 h-screen w-64 bg-surface border-r border-slate-700 flex flex-col z-40 hidden md:flex">
+  const wrapperClass =
+    variant === 'mobile'
+      ? 'fixed left-0 top-0 h-screen w-64 bg-surface border-r border-slate-700 flex flex-col z-50 md:hidden'
+      : 'fixed left-0 top-0 h-screen w-64 bg-surface border-r border-slate-700 flex flex-col z-40 hidden md:flex';
+
+  return <aside className={wrapperClass}>
       {/* Logo Area */}
       <div className="p-6 border-b border-slate-700">
         <div className="flex items-center gap-3">
@@ -61,7 +70,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-        {navItems.map(item => <NavLink key={item.path} to={item.path} className={({
+        {navItems.map(item => <NavLink key={item.path} to={item.path} onClick={() => onNavigate?.()} className={({
         isActive
       }) => `
               flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group
@@ -87,6 +96,7 @@ export function Sidebar() {
             clearAdminToken();
             localStorage.removeItem('unap-admin-key');
             navigate('/login');
+            onNavigate?.();
           }}
           className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-error-text hover:bg-error-bg rounded-lg transition-colors border border-transparent hover:border-red-500/20"
         >
