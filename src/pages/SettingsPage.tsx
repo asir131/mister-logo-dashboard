@@ -3,7 +3,7 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Modal } from "../components/ui/Modal";
 import { apiRequest } from "../utils/apiClient";
-import { Bell, Shield, Lock, Globe, Save } from "lucide-react";
+import { Bell, Shield, Lock, Globe, User } from "lucide-react";
 export function SettingsPage() {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -80,34 +80,6 @@ export function SettingsPage() {
     <div className="max-w-4xl mx-auto space-y-8 fade-in">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-text-primary">Settings</h1>
-        <Button
-          icon={Save}
-          disabled={settingsSaving}
-          onClick={async () => {
-            setSettingsStatus("");
-            setSettingsSaving(true);
-            const result = await apiRequest({
-              path: "/api/admin/settings",
-              method: "PATCH",
-              body: {
-                shareWindowHours: Number(shareWindowHours),
-                topTrendingHours: Number(topTrendingHours),
-                restrictionDays: Number(restrictionDays),
-                warningGraceHours: Number(warningGraceHours),
-              },
-            });
-            setSettingsSaving(false);
-            if (!result.ok) {
-              setSettingsStatus(
-                result.data?.error || "Failed to save settings.",
-              );
-              return;
-            }
-            setSettingsStatus("Settings saved.");
-          }}
-        >
-          {settingsSaving ? "Saving..." : "Save Changes"}
-        </Button>
       </div>
 
       {/* Admin Profile */}
@@ -117,15 +89,8 @@ export function SettingsPage() {
           Admin Profile
         </h2>
         <div className="flex items-start gap-6">
-          <div className="relative group cursor-pointer">
-            <img
-              src="https://ui-avatars.com/api/?name=Admin+User&background=3B82F6&color=fff"
-              alt="Admin"
-              className="w-24 h-24 rounded-full border-4 border-slate-800"
-            />
-            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="text-xs text-white">Change</span>
-            </div>
+          <div className="w-24 h-24 rounded-full border-4 border-slate-800 bg-slate-800 flex items-center justify-center">
+            <User className="w-10 h-10 text-text-secondary" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
             <Input label="Email Address" value={adminEmail} disabled />

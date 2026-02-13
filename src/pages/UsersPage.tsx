@@ -157,7 +157,6 @@ export function UsersPage() {
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <SearchBar onSearch={setSearchTerm} className="w-full sm:w-64" />
-          <Button>Export CSV</Button>
         </div>
       </div>
 
