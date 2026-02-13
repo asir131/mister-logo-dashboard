@@ -83,10 +83,11 @@ export interface ModerationAction {
   type: ModerationActionType;
   targetType: 'user' | 'post';
   targetId: string;
-  targetName: string;
+  targetName?: string;
+  targetEmail?: string;
   performedBy: string;
   performedAt: string;
-  reason: string;
+  reason?: string;
   notes?: string;
 }
 export interface CommunicationStats {

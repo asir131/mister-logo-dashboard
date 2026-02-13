@@ -17,6 +17,8 @@ type UsersState = {
   rewarded: any[];
   rewardedPage: number;
   rewardedTotalPages: number;
+  offersPage: number;
+  offersTotalPages: number;
 };
 
 const initialState: UsersState = {
@@ -35,6 +37,8 @@ const initialState: UsersState = {
   rewarded: [],
   rewardedPage: 1,
   rewardedTotalPages: 1,
+  offersPage: 1,
+  offersTotalPages: 1,
 };
 
 export const fetchUsers = createAsyncThunk(
@@ -60,10 +64,10 @@ export const fetchOffersSummary = createAsyncThunk('users/fetchOffersSummary', a
 
 export const fetchRewardedData = createAsyncThunk(
   'users/fetchRewardedData',
-  async ({ page }: { page: number }) => {
+  async ({ rewardedPage, offersPage }: { rewardedPage: number; offersPage: number }) => {
     const [offersResult, rewardedResult] = await Promise.all([
-      apiRequest({ path: '/api/admin/ublast-offers?limit=50' }),
-      apiRequest({ path: `/api/admin/rewarded-ublasts?page=${page}&limit=20` }),
+      apiRequest({ path: `/api/admin/ublast-offers?page=${offersPage}&limit=10` }),
+      apiRequest({ path: `/api/admin/rewarded-ublasts?page=${rewardedPage}&limit=20` }),
     ]);
     if (!offersResult.ok) {
       throw new Error(offersResult.data?.error || 'Failed to load offers.');
@@ -73,9 +77,11 @@ export const fetchRewardedData = createAsyncThunk(
     }
     return {
       offers: offersResult.data?.offers || [],
+      offersPage: offersResult.data?.page || offersPage,
+      offersTotalPages: offersResult.data?.totalPages || 1,
       rewarded: rewardedResult.data?.rewarded || [],
-      page: rewardedResult.data?.page || page,
-      totalPages: rewardedResult.data?.totalPages || 1,
+      rewardedPage: rewardedResult.data?.page || rewardedPage,
+      rewardedTotalPages: rewardedResult.data?.totalPages || 1,
     };
   },
 );
@@ -94,6 +100,9 @@ const usersSlice = createSlice({
     },
     setRewardedPage(state, action) {
       state.rewardedPage = action.payload;
+    },
+    setOffersPage(state, action) {
+      state.offersPage = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -127,12 +136,14 @@ const usersSlice = createSlice({
       })
       .addCase(fetchRewardedData.fulfilled, (state, action) => {
         state.offers = action.payload.offers || [];
+        state.offersPage = action.payload.offersPage || state.offersPage;
+        state.offersTotalPages = action.payload.offersTotalPages || 1;
         state.rewarded = action.payload.rewarded || [];
-        state.rewardedPage = action.payload.page || state.rewardedPage;
-        state.rewardedTotalPages = action.payload.totalPages || 1;
+        state.rewardedPage = action.payload.rewardedPage || state.rewardedPage;
+        state.rewardedTotalPages = action.payload.rewardedTotalPages || 1;
       });
   },
 });
 
-export const { setFilter, setPage, setRewardedPage } = usersSlice.actions;
+export const { setFilter, setPage, setRewardedPage, setOffersPage } = usersSlice.actions;
 export default usersSlice.reducer;

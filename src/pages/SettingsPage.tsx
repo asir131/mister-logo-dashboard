@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Modal } from "../components/ui/Modal";
@@ -22,6 +22,7 @@ export function SettingsPage() {
   const [newAdminId, setNewAdminId] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
   const [adminCreateStatus, setAdminCreateStatus] = useState("");
+  const [adminToast, setAdminToast] = useState("");
   const [admins, setAdmins] = useState([]);
   const [adminsPage, setAdminsPage] = useState(1);
   const [adminsTotalPages, setAdminsTotalPages] = useState(1);
@@ -51,25 +52,29 @@ export function SettingsPage() {
     };
   }, []);
 
+  const loadAdmins = useCallback(async () => {
+    setAdminsLoading(true);
+    const result = await apiRequest({
+      path: `/api/admin/settings/admins?page=${adminsPage}&limit=5&role=admin`,
+    });
+    setAdminsLoading(false);
+    if (result.ok) {
+      setAdmins(result.data?.admins || []);
+      setAdminsTotalPages(result.data?.totalPages || 1);
+    }
+  }, [adminsPage]);
+
   useEffect(() => {
     let mounted = true;
-    async function loadAdmins() {
-      setAdminsLoading(true);
-      const result = await apiRequest({
-        path: `/api/admin/settings/admins?page=${adminsPage}&limit=5&role=admin`,
-      });
+    async function run() {
       if (!mounted) return;
-      setAdminsLoading(false);
-      if (result.ok) {
-        setAdmins(result.data?.admins || []);
-        setAdminsTotalPages(result.data?.totalPages || 1);
-      }
+      await loadAdmins();
     }
-    loadAdmins();
+    run();
     return () => {
       mounted = false;
     };
-  }, [adminsPage]);
+  }, [loadAdmins]);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 fade-in">
@@ -123,7 +128,6 @@ export function SettingsPage() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-            <Input label="Full Name" defaultValue="Alex Morgan" />
             <Input label="Email Address" value={adminEmail} disabled />
             <Input
               label="Role"
@@ -157,11 +161,8 @@ export function SettingsPage() {
                 Require users to share official posts within 24 hours.
               </p>
             </div>
-            <div className="relative inline-block w-12 h-6 transition duration-200 ease-in-out rounded-full cursor-pointer bg-primary">
-              <span className="absolute left-6 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200"></span>
-            </div>
           </div>{" "}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Input
               label="Share Window (Hours)"
               type="number"
@@ -182,13 +183,6 @@ export function SettingsPage() {
               value={restrictionDays}
               onChange={(event) => setRestrictionDays(event.target.value)}
               helper="Account restriction period for non-compliance"
-            />
-            <Input
-              label="Warning Grace Period (Hours)"
-              type="number"
-              value={warningGraceHours}
-              onChange={(event) => setWarningGraceHours(event.target.value)}
-              helper="Grace period before restriction"
             />
           </div>
           {settingsStatus && (
@@ -218,7 +212,9 @@ export function SettingsPage() {
               className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700"
             >
               <div>
-                <div className="text-sm text-text-primary">{admin.username}</div>
+                <div className="text-sm text-text-primary">
+                  {admin.username}
+                </div>
                 <div className="text-xs text-text-secondary">{admin.email}</div>
               </div>
               <div className="flex items-center gap-2">
@@ -245,7 +241,10 @@ export function SettingsPage() {
                     });
                     if (result.ok) {
                       setAdmins((prev) =>
-                        prev.filter((item: any) => (item._id || item.id) !== (admin._id || admin.id)),
+                        prev.filter(
+                          (item: any) =>
+                            (item._id || item.id) !== (admin._id || admin.id),
+                        ),
                       );
                     }
                   }}
@@ -272,7 +271,9 @@ export function SettingsPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => setAdminsPage(Math.min(adminsTotalPages, adminsPage + 1))}
+              onClick={() =>
+                setAdminsPage(Math.min(adminsTotalPages, adminsPage + 1))
+              }
               disabled={adminsPage >= adminsTotalPages}
             >
               Next
@@ -355,13 +356,20 @@ export function SettingsPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <Input
-            label="Admin ID"
-            placeholder="username"
-            value={newAdminId}
-            onChange={(event) => setNewAdminId(event.target.value)}
-            helper="Email will be username@admin.com"
-          />
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1.5">
+              Username
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                className="flex-1 bg-surface border border-slate-700 rounded-lg px-4 py-2.5 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                placeholder="username"
+                value={newAdminId}
+                onChange={(event) => setNewAdminId(event.target.value)}
+              />
+              <span className="text-sm text-text-secondary">@admin.com</span>
+            </div>
+          </div>
           <Input
             label="Password"
             type="password"
@@ -369,7 +377,9 @@ export function SettingsPage() {
             onChange={(event) => setNewAdminPassword(event.target.value)}
           />
           {adminCreateStatus && (
-            <div className="text-sm text-text-secondary">{adminCreateStatus}</div>
+            <div className="text-sm text-text-secondary">
+              {adminCreateStatus}
+            </div>
           )}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => setAdminModalOpen(false)}>
@@ -396,10 +406,17 @@ export function SettingsPage() {
                   );
                   return;
                 }
-                setAdminCreateStatus("Admin created.");
+                setAdminModalOpen(false);
+                setAdminCreateStatus("");
                 setNewAdminId("");
                 setNewAdminPassword("");
-                setAdminsPage(1);
+                if (adminsPage !== 1) {
+                  setAdminsPage(1);
+                } else {
+                  await loadAdmins();
+                }
+                setAdminToast("Admin created.");
+                setTimeout(() => setAdminToast(""), 3000);
               }}
             >
               Create
@@ -421,7 +438,9 @@ export function SettingsPage() {
             value={resetPassword}
             onChange={(event) => setResetPassword(event.target.value)}
           />
-          {resetStatus && <div className="text-sm text-text-secondary">{resetStatus}</div>}
+          {resetStatus && (
+            <div className="text-sm text-text-secondary">{resetStatus}</div>
+          )}
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => setResetModalOpen(false)}>
               Cancel
@@ -439,7 +458,9 @@ export function SettingsPage() {
                   body: { newPassword: resetPassword.trim() },
                 });
                 if (!result.ok) {
-                  setResetStatus(result.data?.error || "Failed to reset password.");
+                  setResetStatus(
+                    result.data?.error || "Failed to reset password.",
+                  );
                   return;
                 }
                 setResetStatus("Password reset.");
@@ -451,6 +472,7 @@ export function SettingsPage() {
           </div>
         </div>
       </Modal>
+      {adminToast && <div className="toast">{adminToast}</div>}
     </div>
   );
 }

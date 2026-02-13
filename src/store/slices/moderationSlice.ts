@@ -8,10 +8,16 @@ type ModerationState = {
   posts: any[];
   postsPage: number;
   postsTotalPages: number;
+  actions: any[];
+  actionsPage: number;
+  actionsTotalPages: number;
+  selectedUserIds: string[];
   loadingUsers: boolean;
   loadingPosts: boolean;
+  loadingActions: boolean;
   errorUsers: string;
   errorPosts: string;
+  errorActions: string;
 };
 
 const initialState: ModerationState = {
@@ -21,10 +27,16 @@ const initialState: ModerationState = {
   posts: [],
   postsPage: 1,
   postsTotalPages: 1,
+  actions: [],
+  actionsPage: 1,
+  actionsTotalPages: 1,
+  selectedUserIds: [],
   loadingUsers: false,
   loadingPosts: false,
+  loadingActions: false,
   errorUsers: '',
   errorPosts: '',
+  errorActions: '',
 };
 
 export const fetchModerationUsers = createAsyncThunk(
@@ -50,6 +62,33 @@ export const fetchModerationPosts = createAsyncThunk(
       throw new Error(result.data?.error || 'Failed to load posts.');
     }
     return result.data;
+  },
+);
+
+export const fetchModerationActions = createAsyncThunk(
+  'moderation/fetchActions',
+  async ({ page, limit }: { page: number; limit: number }) => {
+    const result = await apiRequest({
+      path: `/api/admin/moderation/actions?page=${page}&limit=${limit}`,
+    });
+    if (!result.ok) {
+      throw new Error(result.data?.error || 'Failed to load actions.');
+    }
+    return result.data;
+  },
+);
+
+export const deletePost = createAsyncThunk(
+  'moderation/deletePost',
+  async ({ postId }: { postId: string }) => {
+    const result = await apiRequest({
+      path: `/api/admin/posts/${postId}`,
+      method: 'DELETE',
+    });
+    if (!result.ok) {
+      throw new Error(result.data?.error || 'Failed to delete post.');
+    }
+    return { postId };
   },
 );
 
@@ -81,10 +120,40 @@ export const unrestrictUser = createAsyncThunk(
   },
 );
 
+export const deleteUsersBulk = createAsyncThunk(
+  'moderation/deleteUsersBulk',
+  async ({ userIds }: { userIds: string[] }) => {
+    const result = await apiRequest({
+      path: `/api/admin/users/delete`,
+      method: 'POST',
+      body: { userIds },
+    });
+    if (!result.ok) {
+      throw new Error(result.data?.error || 'Failed to delete users.');
+    }
+    return { userIds };
+  },
+);
+
 const moderationSlice = createSlice({
   name: 'moderation',
   initialState,
-  reducers: {},
+  reducers: {
+    toggleSelectedUser(state, action) {
+      const userId = action.payload;
+      if (state.selectedUserIds.includes(userId)) {
+        state.selectedUserIds = state.selectedUserIds.filter((id) => id !== userId);
+      } else {
+        state.selectedUserIds.push(userId);
+      }
+    },
+    setSelectedUsers(state, action) {
+      state.selectedUserIds = action.payload || [];
+    },
+    clearSelectedUsers(state) {
+      state.selectedUserIds = [];
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchModerationUsers.pending, (state) => {
@@ -115,6 +184,24 @@ const moderationSlice = createSlice({
         state.loadingPosts = false;
         state.errorPosts = action.error.message || 'Failed to load posts.';
       })
+      .addCase(fetchModerationActions.pending, (state) => {
+        state.loadingActions = true;
+        state.errorActions = '';
+      })
+      .addCase(fetchModerationActions.fulfilled, (state, action) => {
+        state.loadingActions = false;
+        state.actions = action.payload?.actions || [];
+        state.actionsPage = action.payload?.page || state.actionsPage;
+        state.actionsTotalPages = action.payload?.totalPages || 1;
+      })
+      .addCase(fetchModerationActions.rejected, (state, action) => {
+        state.loadingActions = false;
+        state.errorActions = action.error.message || 'Failed to load actions.';
+      })
+      .addCase(deletePost.fulfilled, (state, action) => {
+        const { postId } = action.payload;
+        state.posts = state.posts.filter((post: any) => post.id !== postId);
+      })
       .addCase(restrictUser.fulfilled, (state, action) => {
         const { userId, data } = action.payload;
         state.users = state.users.map((user: any) =>
@@ -142,8 +229,14 @@ const moderationSlice = createSlice({
               }
             : user,
         );
+      })
+      .addCase(deleteUsersBulk.fulfilled, (state, action) => {
+        const ids = action.payload.userIds || [];
+        state.users = state.users.filter((user: any) => !ids.includes(user.id));
+        state.selectedUserIds = [];
       });
   },
 });
 
+export const { toggleSelectedUser, setSelectedUsers, clearSelectedUsers } = moderationSlice.actions;
 export default moderationSlice.reducer;

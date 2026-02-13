@@ -14,6 +14,7 @@ import {
   setFilter,
   setPage,
   setRewardedPage,
+  setOffersPage,
 } from '../store/slices/usersSlice';
 export function UsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +31,8 @@ export function UsersPage() {
     rewarded,
     rewardedPage,
     rewardedTotalPages,
+    offersPage,
+    offersTotalPages,
   } = useAppSelector((state) => state.users);
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
   const [offerUser, setOfferUser] = useState<any | null>(null);
@@ -70,7 +73,10 @@ export function UsersPage() {
   }, {
     key: 'followers',
     header: 'Followers',
-    render: user => (user.followers / 1000).toFixed(1) + 'k',
+    render: user => {
+      const count = Number(user.followers) || 0;
+      return count.toLocaleString();
+    },
     sortable: true
   }, {
     key: 'status',
@@ -135,8 +141,8 @@ export function UsersPage() {
 
   useEffect(() => {
     if (filter !== 'rewarded') return;
-    dispatch(fetchRewardedData({ page: rewardedPage }));
-  }, [dispatch, filter, rewardedPage]);
+    dispatch(fetchRewardedData({ rewardedPage, offersPage }));
+  }, [dispatch, filter, rewardedPage, offersPage]);
 
   const filteredUsers = useMemo(() => users.filter(user => user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || user.email?.toLowerCase().includes(searchTerm.toLowerCase())), [users, searchTerm]);
   return <div className="space-y-6 fade-in">
@@ -300,6 +306,19 @@ export function UsersPage() {
           header: 'Created',
           render: item => item.createdAt ? new Date(item.createdAt).toLocaleString() : '--'
         }]} />
+            <div className="flex items-center justify-between text-sm text-text-secondary mt-3">
+              <span>
+                Page {offersPage} of {offersTotalPages}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => dispatch(setOffersPage(Math.max(1, offersPage - 1)))} disabled={offersPage <= 1}>
+                  Previous
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => dispatch(setOffersPage(Math.min(offersTotalPages, offersPage + 1)))} disabled={offersPage >= offersTotalPages}>
+                  Next
+                </Button>
+              </div>
+            </div>
           </div>
         </div>}
       <Modal isOpen={isOfferModalOpen} onClose={() => setIsOfferModalOpen(false)} title="UBlast Reward or Offer" size="lg">

@@ -2,14 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { MetricCard } from '../components/ui/MetricCard';
 import { LineChart } from '../components/charts/LineChart';
 import { BarChart } from '../components/charts/BarChart';
-import { Button } from '../components/ui/Button';
-import { BarChart3, Megaphone, Plus, Share2, TrendingUp, UserCheck, Users } from 'lucide-react';
-import { Modal } from '../components/ui/Modal';
-import { Input } from '../components/ui/Input';
+import { BarChart3, Megaphone, Share2, TrendingUp, UserCheck, Users } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchOverview } from '../store/slices/overviewSlice';
 export function OverviewPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const dispatch = useAppDispatch();
   const {
     stats,
@@ -65,9 +61,6 @@ export function OverviewPage() {
             Welcome back, Admin. Here's what's happening today.
           </p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} icon={Plus}>
-          Create Official Post
-        </Button>
       </div>
 
       {/* Metrics Grid */}
@@ -140,30 +133,5 @@ export function OverviewPage() {
         </div>
       </div>
 
-      {/* Create Post Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Create UNAP Social Media Blast" size="lg">
-        <div className="space-y-6">
-          <Input label="Post Title" placeholder="Enter post title" />
-
-          <div>
-            <label className="block text-sm font-medium text-text-secondary mb-1.5">
-              Post Content
-            </label>
-            <textarea className="w-full bg-surface border border-slate-700 rounded-lg p-4 text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 min-h-[150px]" placeholder="What's on your mind?"></textarea>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Hashtags" placeholder="#official #update" />
-            <Input type="file" label="Media Attachment" className="pt-1.5" />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
-            <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setIsModalOpen(false)}>Publish Post</Button>
-          </div>
-        </div>
-      </Modal>
     </div>;
 }

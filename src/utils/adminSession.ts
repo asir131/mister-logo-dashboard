@@ -14,5 +14,19 @@ export function clearAdminToken() {
 }
 
 export function hasAdminSession() {
-  return Boolean(getAdminToken());
+  const token = getAdminToken();
+  if (!token) return false;
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) throw new Error('Invalid token');
+    const decoded = JSON.parse(atob(payload));
+    if (decoded?.exp && Date.now() >= decoded.exp * 1000) {
+      clearAdminToken();
+      return false;
+    }
+    return true;
+  } catch (err) {
+    clearAdminToken();
+    return false;
+  }
 }

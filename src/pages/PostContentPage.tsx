@@ -13,7 +13,7 @@ import { fetchOfficialPosts, fetchUserPosts } from '../store/slices/postContentS
 type AdminPostRow = {
   id: string;
   userId: string;
-  user: { id?: string; name: string; avatar?: string };
+  user: { id?: string; name: string; avatar?: string; email?: string };
   content: string;
   mediaType: string;
   platforms: string[];
@@ -74,7 +74,7 @@ export function PostContentPage() {
           {post.user.avatar && <img src={post.user.avatar} alt="" className="w-8 h-8 rounded-full" />}
           <div>
             <div className="font-medium">{post.user.name}</div>
-            <div className="text-xs text-text-secondary">{post.userId}</div>
+            <div className="text-xs text-text-secondary">{post.user.email || '-'}</div>
           </div>
         </div>
   }, {
@@ -149,7 +149,8 @@ export function PostContentPage() {
 
   const filteredUserPosts = useMemo(() => {
     return userPosts.filter(post => {
-      const matchesSearch = post.content.toLowerCase().includes(searchTerm.toLowerCase()) || post.user.name.toLowerCase().includes(searchTerm.toLowerCase()) || post.userId.toLowerCase().includes(searchTerm.toLowerCase());
+      const search = searchTerm.toLowerCase();
+      const matchesSearch = post.content.toLowerCase().includes(search) || post.user.name.toLowerCase().includes(search) || (post.user.email || '').toLowerCase().includes(search);
       return matchesSearch;
     });
   }, [userPosts, searchTerm]);

@@ -2,7 +2,7 @@ import React from 'react';
 import { ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react';
 export interface Column<T> {
   key: string;
-  header: string;
+  header: React.ReactNode;
   render?: (item: T) => React.ReactNode;
   sortable?: boolean;
 }

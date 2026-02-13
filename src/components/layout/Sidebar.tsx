@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FileText, Users, MessageSquare, Settings, LogOut, TrendingUp, ClipboardCheck, Calendar, Shield, Mail } from 'lucide-react';
+import { LayoutDashboard, FileText, Users, MessageSquare, Settings, LogOut, TrendingUp, ClipboardCheck, Calendar, Shield, Mail, User } from 'lucide-react';
 import { clearAdminToken } from '../../utils/adminSession';
+import logo from '../../assets/misterLogo.png';
 export function Sidebar() {
   const navigate = useNavigate();
   const navItems = [{
@@ -49,8 +50,8 @@ export function Sidebar() {
       {/* Logo Area */}
       <div className="p-6 border-b border-slate-700">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-gradient flex items-center justify-center shadow-lg shadow-primary/20">
-            <span className="text-white font-bold text-xl">U</span>
+          <div className="w-10 h-10 rounded-xl bg-slate-900/40 flex items-center justify-center shadow-lg shadow-black/20 border border-slate-700 overflow-hidden">
+            <img src={logo} alt="Mister Logo" className="w-full h-full object-contain" />
           </div>
           <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
             UNAP
@@ -74,11 +75,10 @@ export function Sidebar() {
       {/* Admin Profile */}
       <div className="p-4 border-t border-slate-700 bg-slate-800/30">
         <div className="flex items-center gap-3 mb-4">
-          <img src="https://ui-avatars.com/api/?name=Admin+User&background=3B82F6&color=fff" alt="Admin" className="w-10 h-10 rounded-full border-2 border-slate-600" />
+          <div className="w-10 h-10 rounded-full border-2 border-slate-600 bg-slate-800 flex items-center justify-center">
+            <User className="w-5 h-5 text-text-secondary" />
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-text-primary truncate">
-              Alex Morgan
-            </p>
             <p className="text-xs text-primary truncate">Super Admin</p>
           </div>
         </div>
