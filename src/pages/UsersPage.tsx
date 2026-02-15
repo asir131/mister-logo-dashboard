@@ -40,7 +40,7 @@ export function UsersPage() {
   const [offerError, setOfferError] = useState('');
   const [offerForm, setOfferForm] = useState({
     ublastId: '',
-    priceCents: '',
+    priceDollars: '',
     mode: 'reward',
     createNew: false
   });
@@ -100,7 +100,7 @@ export function UsersPage() {
         setOfferForm(prev => ({
           ...prev,
           ublastId: '',
-          priceCents: '',
+          priceDollars: '',
           mode: 'reward'
         }));
         setIsOfferModalOpen(true);
@@ -380,10 +380,15 @@ export function UsersPage() {
           media: event.target.files?.[0] || null
         }))} />
             </div>}
-          {offerForm.mode === 'offer' && <Input label="Price (USD)" placeholder="5.00" value={offerForm.priceCents} onChange={event => setOfferForm(prev => ({
-          ...prev,
-          priceCents: event.target.value
-        }))} />}
+          {offerForm.mode === 'offer' && <Input label="Price (USD)" placeholder="5.00" value={offerForm.priceDollars} onChange={event => {
+          const nextValue = event.target.value;
+          if (nextValue === '' || /^\d+(\.\d{0,2})?$/.test(nextValue)) {
+            setOfferForm(prev => ({
+              ...prev,
+              priceDollars: nextValue
+            }));
+          }
+        }} />}
           <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
             <Button variant="ghost" onClick={() => setIsOfferModalOpen(false)}>
               Cancel
@@ -438,7 +443,7 @@ export function UsersPage() {
                 method: 'POST',
                 body: {
                   userId: offerUser.id,
-                  priceDollars: Number(offerForm.priceCents) || 0,
+                  priceDollars: Number(offerForm.priceDollars) || 0,
                   currency: 'usd'
                 }
               });
