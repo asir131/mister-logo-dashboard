@@ -1,4 +1,5 @@
 import React from 'react';
+import { toProxyMediaUrl } from '../../utils/mediaProxy';
 import { ChatSession } from '../../types';
 interface UserListProps {
   chats: ChatSession[];
@@ -20,7 +21,7 @@ export function UserList({
               ${activeChatId === chat.id ? 'bg-slate-800/50' : 'hover:bg-slate-800/30'}
             `}>
             <div className="relative">
-              <img src={chat.user.avatar} alt={chat.user.name} className="w-10 h-10 rounded-full object-cover" />
+              <img src={toProxyMediaUrl(chat.user.avatar)} alt={chat.user.name} className="w-10 h-10 rounded-full object-cover" />
               {chat.unreadCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-white text-[10px] flex items-center justify-center rounded-full">
                   {chat.unreadCount}
                 </span>}

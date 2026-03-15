@@ -6,6 +6,7 @@ import { SearchBar } from '../components/ui/SearchBar';
 import { Button } from '../components/ui/Button';
 import { Modal } from '../components/ui/Modal';
 import { apiRequest } from '../utils/apiClient';
+import { toProxyMediaUrl } from '../utils/mediaProxy';
 import { Eye, Heart, MessageCircle, Share2, MoreHorizontal, Instagram, Youtube, Music, Video } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchOfficialPosts, fetchUserPosts } from '../store/slices/postContentSlice';
@@ -71,7 +72,7 @@ export function PostContentPage() {
     key: 'user',
     header: 'User',
     render: post => <div className="flex items-center gap-3">
-          {post.user.avatar && <img src={post.user.avatar} alt="" className="w-8 h-8 rounded-full" />}
+          {post.user.avatar && <img src={toProxyMediaUrl(post.user.avatar)} alt="" className="w-8 h-8 rounded-full" />}
           <div>
             <div className="font-medium">{post.user.name}</div>
             <div className="text-xs text-text-secondary">{post.user.email || '-'}</div>

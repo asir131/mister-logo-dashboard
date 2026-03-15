@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { toProxyMediaUrl } from '../../utils/mediaProxy';
 import { ChatSession } from '../../types';
 import { Send, Paperclip } from 'lucide-react';
 import { Button } from '../ui/Button';
@@ -36,7 +37,7 @@ export function ChatWindow({
       {/* Header */}
       <div className="p-4 border-b border-slate-700 bg-surface flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <img src={chat.user.avatar} alt={chat.user.name} className="w-8 h-8 rounded-full" />
+          <img src={toProxyMediaUrl(chat.user.avatar)} alt={chat.user.name} className="w-8 h-8 rounded-full" />
           <div>
             <h3 className="font-medium text-text-primary">{chat.user.name}</h3>
             <span className="text-xs text-text-secondary">

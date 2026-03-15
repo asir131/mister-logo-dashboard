@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { apiRequest } from "../utils/apiClient";
+import { toProxyMediaUrl } from "../utils/mediaProxy";
 import { Button } from "../components/ui/Button";
 import { Select } from "../components/ui/Select";
 import { Mail, Phone, Trash2 } from "lucide-react";
@@ -181,7 +182,7 @@ export function SupportChatPage() {
               <div className="relative">
                 {thread.user.avatar ? (
                   <img
-                    src={thread.user.avatar}
+                    src={toProxyMediaUrl(thread.user.avatar)}
                     alt={thread.user.name}
                     className="w-10 h-10 rounded-full object-cover"
                   />
@@ -340,7 +341,7 @@ export function SupportChatPage() {
             <div className="text-center">
               {activeThread.user.avatar ? (
                 <img
-                  src={activeThread.user.avatar}
+                  src={toProxyMediaUrl(activeThread.user.avatar)}
                   alt={activeThread.user.name}
                   className="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-slate-800"
                 />

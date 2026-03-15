@@ -6,6 +6,7 @@ import { TrendingUp, Pin, MoveUp, MoveDown, X } from 'lucide-react';
 import { apiRequest } from '../utils/apiClient';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchTrendingControl } from '../store/slices/trendingControlSlice';
+import { toProxyMediaUrl } from '../utils/mediaProxy';
 export function TrendingControlPage() {
   const [selectedSection, setSelectedSection] = useState<'unap-blast' | 'manual-pinned' | 'organic'>('unap-blast');
   const [topPage, setTopPage] = useState(1);
@@ -63,7 +64,7 @@ export function TrendingControlPage() {
     key: 'content',
     header: 'UBlast Post',
     render: post => <div className="flex items-center gap-3">
-          {post.mediaUrl && <img src={post.mediaUrl} alt="" className="w-12 h-12 rounded object-cover" />}
+          {post.mediaUrl && <img src={toProxyMediaUrl(post.mediaUrl)} alt="" className="w-12 h-12 rounded object-cover" />}
           <div>
             <p className="font-medium text-text-primary">UBlast</p>
             <p className="text-sm text-text-secondary truncate max-w-xs">
@@ -97,7 +98,7 @@ export function TrendingControlPage() {
     key: 'title',
     header: 'UBlast',
     render: blast => <div className="flex items-center gap-3">
-          {blast.mediaUrl && <img src={blast.mediaUrl} alt="" className="w-12 h-12 rounded object-cover" />}
+          {blast.mediaUrl && <img src={toProxyMediaUrl(blast.mediaUrl)} alt="" className="w-12 h-12 rounded object-cover" />}
           <div>
             <p className="font-medium text-text-primary">
               {blast.title || 'Untitled'}
@@ -130,7 +131,7 @@ export function TrendingControlPage() {
     render: item => {
       const post = item.post || item;
       return <div className="flex items-center gap-3">
-          {post.mediaUrl && <img src={post.mediaUrl} alt="" className="w-12 h-12 rounded object-cover" />}
+          {post.mediaUrl && <img src={toProxyMediaUrl(post.mediaUrl)} alt="" className="w-12 h-12 rounded object-cover" />}
           <div>
             <p className="font-medium text-text-primary">Post</p>
             <p className="text-sm text-text-secondary truncate max-w-xs">

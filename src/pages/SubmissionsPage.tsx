@@ -6,6 +6,7 @@ import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { CheckCircle, XCircle, Eye, FileText } from 'lucide-react';
 import { apiRequest } from '../utils/apiClient';
+import { toProxyMediaUrl } from '../utils/mediaProxy';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchSubmissions } from '../store/slices/submissionsSlice';
 export function SubmissionsPage() {
@@ -230,7 +231,7 @@ export function SubmissionsPage() {
                     Attachments
                   </label>
                   <div className="grid grid-cols-2 gap-4">
-                    <img src={selectedSubmission.mediaUrl} alt="" className="w-full h-32 object-cover rounded-lg" />
+                    <img src={toProxyMediaUrl(selectedSubmission.mediaUrl)} alt="" className="w-full h-32 object-cover rounded-lg" />
                   </div>
                 </div>}
 

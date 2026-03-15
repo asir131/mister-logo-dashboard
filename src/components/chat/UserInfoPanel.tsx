@@ -1,4 +1,5 @@
 import React from 'react';
+import { toProxyMediaUrl } from '../../utils/mediaProxy';
 import { ChatSession } from '../../types';
 import { Mail, Phone, Instagram, Music, Video, Youtube } from 'lucide-react';
 import { Select } from '../ui/Select';
@@ -17,7 +18,7 @@ export function UserInfoPanel({
   };
   return <div className="w-72 bg-surface border-l border-slate-700 p-6 hidden xl:block overflow-y-auto">
       <div className="text-center mb-6">
-        <img src={chat.user.avatar} alt={chat.user.name} className="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-slate-800" />
+        <img src={toProxyMediaUrl(chat.user.avatar)} alt={chat.user.name} className="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-slate-800" />
         <h3 className="text-lg font-bold text-text-primary">
           {chat.user.name}
         </h3>

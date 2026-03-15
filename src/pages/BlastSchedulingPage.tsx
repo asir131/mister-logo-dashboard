@@ -8,6 +8,7 @@ import { Select } from "../components/ui/Select";
 import { Plus, Calendar, Edit, Trash2, Send } from "lucide-react";
 import { apiRequest } from "../utils/apiClient";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { toProxyMediaUrl } from "../utils/mediaProxy";
 import {
   fetchScheduling,
   fetchSchedulingUsers,
@@ -161,7 +162,7 @@ export function BlastSchedulingPage() {
         <div className="flex items-center gap-3">
           {blast.mediaUrl && (
             <img
-              src={blast.mediaUrl}
+              src={toProxyMediaUrl(blast.mediaUrl)}
               alt=""
               className="w-12 h-12 rounded object-cover"
             />
@@ -227,7 +228,7 @@ export function BlastSchedulingPage() {
         <div className="flex items-center gap-3">
           {submission.mediaUrl && (
             <img
-              src={submission.mediaUrl}
+              src={toProxyMediaUrl(submission.mediaUrl)}
               alt=""
               className="w-12 h-12 rounded object-cover"
             />

@@ -8,6 +8,7 @@ import { Select } from "../components/ui/Select";
 import { ModerationAction } from "../types";
 import { Shield, Trash2, AlertTriangle } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { toProxyMediaUrl } from "../utils/mediaProxy";
 import {
   fetchModerationPosts,
   fetchModerationActions,
@@ -84,7 +85,7 @@ export function ModerationPage() {
       render: (user) => (
         <div className="flex items-center gap-3">
           {user.avatar ? (
-            <img src={user.avatar} alt="" className="w-10 h-10 rounded-full" />
+            <img src={toProxyMediaUrl(user.avatar)} alt="" className="w-10 h-10 rounded-full" />
           ) : (
             <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xs text-text-secondary">
               {user.name?.[0] || "U"}
@@ -125,7 +126,7 @@ export function ModerationPage() {
         <div className="flex items-center gap-3">
           {post.mediaUrl && (
             <img
-              src={post.mediaUrl}
+              src={toProxyMediaUrl(post.mediaUrl)}
               alt=""
               className="w-12 h-12 rounded object-cover"
             />

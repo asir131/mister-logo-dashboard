@@ -4,6 +4,7 @@ import { Input } from "../components/ui/Input";
 import { Select } from "../components/ui/Select";
 import { Modal } from "../components/ui/Modal";
 import { apiRequest } from "../utils/apiClient";
+import { toProxyMediaUrl } from "../utils/mediaProxy";
 import {
   Mail,
   MessageSquare,
@@ -225,7 +226,7 @@ export function CommunicationsPage() {
                     <div className="flex items-center gap-3">
                       {user.avatar ? (
                         <img
-                          src={user.avatar}
+                          src={toProxyMediaUrl(user.avatar)}
                           alt=""
                           className="w-8 h-8 rounded-full"
                         />

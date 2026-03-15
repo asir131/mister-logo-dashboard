@@ -4,6 +4,7 @@ import { StatusBadge } from '../components/ui/StatusBadge';
 import { SearchBar } from '../components/ui/SearchBar';
 import { Button } from '../components/ui/Button';
 import { apiRequest } from '../utils/apiClient';
+import { toProxyMediaUrl } from '../utils/mediaProxy';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -55,7 +56,7 @@ export function UsersPage() {
     key: 'name',
     header: 'User',
     render: user => <div className="flex items-center gap-3">
-          {user.avatar ? <img src={user.avatar} alt="" className="w-10 h-10 rounded-full" /> : <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xs text-text-secondary">
+          {user.avatar ? <img src={toProxyMediaUrl(user.avatar)} alt="" className="w-10 h-10 rounded-full" /> : <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-xs text-text-secondary">
               {user.name?.[0] || 'U'}
             </div>}
           <div>
